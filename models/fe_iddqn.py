@@ -96,9 +96,15 @@ class FE_IDDQN:
         Returns:
             选择的动作
         """
-        # 转换为张量并添加批次维度
-        task_tensor = torch.FloatTensor(task_features).unsqueeze(0).to(self.device)
-        resource_tensor = torch.FloatTensor(resource_features).unsqueeze(0).to(self.device)
+        # 转换为张量，如果已经是3D则不需要添加批次维度
+        task_tensor = torch.FloatTensor(task_features).to(self.device)
+        resource_tensor = torch.FloatTensor(resource_features).to(self.device)
+        
+        # 确保是3D张量 [batch_size, num_items, features]
+        if len(task_tensor.shape) == 2:
+            task_tensor = task_tensor.unsqueeze(0)
+        if len(resource_tensor.shape) == 2:
+            resource_tensor = resource_tensor.unsqueeze(0)
         
         with torch.no_grad():
             q_values = self.q_network(task_tensor, resource_tensor)
@@ -208,17 +214,39 @@ class FE_IDDQN:
     
     def _reconstruct_features(self, states: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """重构状态为任务和资源特征"""
-        # 这里需要根据实际的特征维度来分割状态
-        # 假设任务特征在前，资源特征在后
         batch_size = states.shape[0]
+        total_features = states.shape[1]
         
-        # 计算分割点（这里需要根据实际情况调整）
-        task_feature_size = self.task_input_dim * 10  # 假设有10个任务
-        resource_feature_size = self.resource_input_dim * 5  # 假设有5个资源
+        # 动态计算任务和资源特征的分割点
+        # 假设任务特征和资源特征的总维度是固定的
+        # 我们需要根据实际的状态维度来推断任务和资源的数量
         
-        task_features = states[:, :task_feature_size].view(batch_size, 10, self.task_input_dim)
+        # 计算每个样本的总特征数
+        features_per_sample = total_features // batch_size if batch_size > 0 else total_features
+        
+        # 假设任务特征占2/3，资源特征占1/3
+        task_features_count = int(features_per_sample * 2 / 3)
+        resource_features_count = features_per_sample - task_features_count
+        
+        # 确保任务特征数量是task_input_dim的倍数
+        num_tasks = max(1, task_features_count // self.task_input_dim)
+        task_feature_size = num_tasks * self.task_input_dim
+        
+        # 确保资源特征数量是resource_input_dim的倍数
+        num_resources = max(1, resource_features_count // self.resource_input_dim)
+        resource_feature_size = num_resources * self.resource_input_dim
+        
+        # 如果总特征数不够，调整分割
+        if task_feature_size + resource_feature_size > total_features:
+            # 按比例调整
+            ratio = total_features / (task_feature_size + resource_feature_size)
+            task_feature_size = int(task_feature_size * ratio)
+            resource_feature_size = total_features - task_feature_size
+        
+        # 重塑为3D张量
+        task_features = states[:, :task_feature_size].view(batch_size, num_tasks, self.task_input_dim)
         resource_features = states[:, task_feature_size:task_feature_size + resource_feature_size].view(
-            batch_size, 5, self.resource_input_dim)
+            batch_size, num_resources, self.resource_input_dim)
         
         return task_features, resource_features
     

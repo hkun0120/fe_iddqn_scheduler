@@ -78,7 +78,7 @@ class TaskStream(nn.Module):
                     nn.Linear(hidden_dims[i], hidden_dims[i + 1]),
                     nn.ReLU(),
                     nn.Dropout(dropout_rate),
-                    nn.BatchNorm1d(hidden_dims[i + 1])
+                    nn.LayerNorm(hidden_dims[i + 1])
                 )
             )
         
@@ -143,7 +143,7 @@ class ResourceStream(nn.Module):
                     nn.Linear(hidden_dims[i], hidden_dims[i + 1]),
                     nn.ReLU(),
                     nn.Dropout(dropout_rate),
-                    nn.BatchNorm1d(hidden_dims[i + 1])
+                    nn.LayerNorm(hidden_dims[i + 1])
                 )
             )
         

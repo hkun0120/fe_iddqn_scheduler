@@ -40,7 +40,9 @@ class DataPreprocessor:
         
         # 1. 处理缺失值
         df_processed = self._handle_missing_values(df_processed, table_name)
-        
+        # 在 _preprocess_dataframe 方法中，处理缺失值后加上这段
+        if 'state' in df_processed.columns:
+            df_processed = df_processed[~df_processed['state'].isin([6, 9])]
         # 2. 处理时间字段
         df_processed = self._handle_datetime_fields(df_processed, table_name)
         
@@ -125,7 +127,9 @@ class DataPreprocessor:
         numeric_columns = df.select_dtypes(include=[np.number]).columns
         
         for col in numeric_columns:
-            if col in ['id', 'code', 'version', 'process_instance_id', 'task_instance_id']:
+            if col in ['id', 'code', 'version', 'process_instance_id', 'task_instance_id',
+                       'task_code','state','pid','flag','executor_id','project_code','process_definition_code',
+                       'process_definition_version','pre_task_code','pre_task_version','post_task_code','post_task_version']:
                 # 跳过ID类字段
                 continue
                 
@@ -179,13 +183,12 @@ class DataPreprocessor:
             # 添加任务状态编码
             if 'state' in df.columns:
                 state_mapping = {
-                    'SUCCESS': 1,
-                    'FAILURE': 0,
-                    'RUNNING': 2,
+                    'SUCCESS': 7,
+                    'FAILURE': 6,
+                    'RUNNING': 1,
                     'WAITING': 3,
-                    'PAUSE': 4,
-                    'KILL': 5,
-                    'STOP': 6
+                    'PAUSE': 5,
+                    'KILL': 9
                 }
                 df['state_code'] = df['state'].map(state_mapping).fillna(-1)
                 
@@ -198,13 +201,12 @@ class DataPreprocessor:
             # 添加工作流状态编码
             if 'state' in df.columns:
                 state_mapping = {
-                    'SUCCESS': 1,
-                    'FAILURE': 0,
-                    'RUNNING': 2,
+                    'SUCCESS': 7,
+                    'FAILURE': 6,
+                    'RUNNING': 1,
                     'WAITING': 3,
-                    'PAUSE': 4,
-                    'KILL': 5,
-                    'STOP': 6
+                    'PAUSE': 5,
+                    'KILL': 9
                 }
                 df['state_code'] = df['state'].map(state_mapping).fillna(-1)
         

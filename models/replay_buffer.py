@@ -9,7 +9,18 @@ Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state'
 
 class SumTree:
     """求和树数据结构，用于优先级采样"""
-    
+    # 二叉树结构：self.tree数组大小为2 * capacity - 1，其中：
+    #
+    #
+    # 最后的capacity个元素是叶子节点，存储每个样本的优先级
+    # 前capacity - 1
+    # 个元素是内部节点，存储子节点优先级之和
+    # 数组索引0是根节点，存储所有优先级总和
+    # 数据存储：self.data数组仅存储capacity个实际经验数据，与叶子节点一一对应
+    #
+    # 写入指针：self.write指示下一个要写入的位置，实现循环缓冲
+    #
+    # 实际存储量：self.n_entries记录当前已存储的经验数量
     def __init__(self, capacity: int):
         self.capacity = capacity
         self.tree = np.zeros(2 * capacity - 1)
