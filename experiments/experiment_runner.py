@@ -377,7 +377,7 @@ class ExperimentRunner:
                         agent.store_experience(state, action, reward, next_state, done)
                         
                         # 训练网络
-                        if step_count % algorithm_params.get('training_frequency', 4) == 0:
+                        if step_count % algorithm_params.get('train_freq', 4) == 0:
                             loss = agent.train()
                         
                         episode_reward += reward

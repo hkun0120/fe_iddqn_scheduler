@@ -94,17 +94,54 @@ class HistoricalReplaySimulator:
         # 关键修复：根据依赖关系排序任务
         self.current_process_tasks = self._sort_tasks_by_dependencies(current_process['process_definition_code'])
         
-        # 重置资源状态，确保每个新进程开始时资源是干净的
-        self.available_resources = {}
-        
-        # 初始化资源状态
-        self._initialize_resources()
+        # 关键修复：保留累积的执行时间，只重置资源使用状态
+        # 而不是完全重新初始化资源
+        self._update_resources_for_new_process()
         
         self.current_task_idx = 0
         return True
     
+    def _update_resources_for_new_process(self):
+        """为新进程更新资源状态，保留累积的执行时间"""
+        # 从当前进程的任务中提取主机信息
+        hosts = self.current_process_tasks['host'].dropna().unique()
+        
+        # 如果没有找到主机信息，使用默认主机
+        if len(hosts) == 0:
+            hosts = ['default_host']
+        
+        # 保存现有的执行时间
+        existing_execution_times = {}
+        if hasattr(self, 'available_resources'):
+            for host, resource in self.available_resources.items():
+                existing_execution_times[host] = resource.get('execution_time', 0.0)
+        
+        # 重新初始化资源，但保留累积的执行时间
+        for host in hosts:
+            # 估算主机资源容量
+            host_tasks = self.current_process_tasks[
+                self.current_process_tasks['host'] == host
+            ]
+            
+            # 基于历史数据估算资源容量
+            cpu_capacity = self._estimate_host_cpu_capacity(host_tasks)
+            memory_capacity = self._estimate_host_memory_capacity(host_tasks)
+            
+            # 保留累积的执行时间，只重置资源使用状态
+            cumulative_execution_time = existing_execution_times.get(host, 0.0)
+            
+            self.available_resources[host] = {
+                'cpu_capacity': cpu_capacity,
+                'memory_capacity': memory_capacity,
+                'cpu_used': 0,  # 重置资源使用状态
+                'memory_used': 0,  # 重置资源使用状态
+                'execution_time': cumulative_execution_time,  # 保留累积的执行时间
+                'task_queue': [],        # 重置任务队列
+                'current_task_end_time': cumulative_execution_time  # 基于累积时间设置
+            }
+    
     def _initialize_resources(self):
-        """初始化资源状态"""
+        """初始化资源状态（仅在第一次调用时使用）"""
         # 从当前进程的任务中提取主机信息
         hosts = self.current_process_tasks['host'].dropna().unique()
         
@@ -132,43 +169,55 @@ class HistoricalReplaySimulator:
                 'current_task_end_time': 0.0  # 当前任务的结束时间
             }
     
-    def _estimate_host_cpu_capacity(self, host_tasks: pd.DataFrame) -> int:
-        """估算主机的CPU容量"""
+    def _estimate_host_cpu_capacity(self, host_tasks: pd.DataFrame) -> float:
+        """基于实际任务需求动态估算主机CPU容量"""
         if host_tasks.empty:
-            return 8
+            return 2.0  # 更合理的默认值
         
-        # 基于任务类型和数量估算
+        # 计算所有任务的总CPU需求
+        total_cpu_req = 0.0
+        for _, task in host_tasks.iterrows():
+            total_cpu_req += self._estimate_task_cpu_requirement(task)
+        
+        # 基于任务需求设置合理的主机容量
+        # 允许一定的资源余量，但不浪费
+        estimated_cpu = max(total_cpu_req * 1.5, 2.0)
+        
+        # 根据任务类型进行微调
         task_types = host_tasks['task_type'].value_counts()
-        estimated_cpu = 4  # 基础CPU
-        
-        # 根据任务类型调整
         if 'SPARK' in task_types or 'FLINK' in task_types:
-            estimated_cpu += 4
+            estimated_cpu = max(estimated_cpu, 6.0)  # 大数据任务需要更多资源
         if 'JAVA' in task_types:
-            estimated_cpu += 2
+            estimated_cpu = max(estimated_cpu, 4.0)  # Java应用需要中等资源
         if 'PYTHON' in task_types:
-            estimated_cpu += 1
+            estimated_cpu = max(estimated_cpu, 3.0)  # Python脚本需要较少资源
         
-        return min(estimated_cpu, 16)
+        return min(estimated_cpu, 16.0)  # 设置上限避免过度估算
     
-    def _estimate_host_memory_capacity(self, host_tasks: pd.DataFrame) -> int:
-        """估算主机的内存容量"""
+    def _estimate_host_memory_capacity(self, host_tasks: pd.DataFrame) -> float:
+        """基于实际任务需求动态估算主机内存容量"""
         if host_tasks.empty:
-            return 16
+            return 4.0  # 更合理的默认值
         
-        # 基于任务类型估算
+        # 计算所有任务的总内存需求
+        total_memory_req = 0.0
+        for _, task in host_tasks.iterrows():
+            total_memory_req += self._estimate_task_memory_requirement(task)
+        
+        # 基于任务需求设置合理的主机容量
+        # 允许一定的资源余量，但不浪费
+        estimated_memory = max(total_memory_req * 1.5, 4.0)
+        
+        # 根据任务类型进行微调
         task_types = host_tasks['task_type'].value_counts()
-        estimated_memory = 8  # 基础内存
-        
-        # 根据任务类型调整
         if 'SPARK' in task_types or 'FLINK' in task_types:
-            estimated_memory += 8
+            estimated_memory = max(estimated_memory, 12.0)  # 大数据任务需要更多内存
         if 'JAVA' in task_types:
-            estimated_memory += 4
+            estimated_memory = max(estimated_memory, 8.0)   # Java应用需要中等内存
         if 'PYTHON' in task_types:
-            estimated_memory += 2
+            estimated_memory = max(estimated_memory, 6.0)   # Python脚本需要较少内存
         
-        return min(estimated_memory, 64)
+        return min(estimated_memory, 64.0)  # 设置上限避免过度估算
     
     def get_state(self) -> Tuple[np.ndarray, np.ndarray]:
         """获取当前状态"""
@@ -367,8 +416,16 @@ class HistoricalReplaySimulator:
     
     def step(self, action: int) -> Tuple[Tuple[np.ndarray, np.ndarray], float, bool, Dict]:
         """执行一个调度动作"""
+        # 检查是否还有任务需要调度
         if self.current_task_idx >= len(self.current_process_tasks):
-            return self.get_state(), 0, True, {}
+            # 当前进程的所有任务都完成了，尝试切换到下一个进程
+            self.current_process_idx += 1
+            if not self._load_current_process():
+                # 所有进程都完成了
+                return self.get_state(), 0, True, {}
+            else:
+                # 成功切换到下一个进程，继续调度
+                pass
         
         # 获取当前任务
         current_task = self.current_process_tasks.iloc[self.current_task_idx]
@@ -444,14 +501,6 @@ class HistoricalReplaySimulator:
             
             # 移动到下一个任务
             self.current_task_idx += 1
-            
-            # 检查是否完成当前进程的所有任务
-            if self.current_task_idx >= len(self.current_process_tasks):
-                # 移动到下一个进程
-                self.current_process_idx += 1
-                if not self._load_current_process():
-                    # 所有进程都完成了
-                    return self.get_state(), reward, True, {}
             
             return self.get_state(), reward, False, {
                 'task_scheduled': True,
@@ -535,6 +584,46 @@ class HistoricalReplaySimulator:
             total_utilization += (cpu_util + memory_util) / 2
         
         return total_utilization / len(self.available_resources)
+    
+    def get_resource_efficiency(self) -> Dict:
+        """监控资源利用效率"""
+        efficiency = {}
+        for host, resource in self.available_resources.items():
+            cpu_efficiency = resource['cpu_used'] / resource['cpu_capacity'] if resource['cpu_capacity'] > 0 else 0
+            memory_efficiency = resource['memory_used'] / resource['memory_capacity'] if resource['memory_capacity'] > 0 else 0
+            
+            efficiency[host] = {
+                'cpu_capacity': resource['cpu_capacity'],
+                'cpu_used': resource['cpu_used'],
+                'cpu_efficiency': cpu_efficiency,
+                'memory_capacity': resource['memory_capacity'],
+                'memory_used': resource['memory_used'],
+                'memory_efficiency': memory_efficiency,
+                'overall_efficiency': (cpu_efficiency + memory_efficiency) / 2,
+                'execution_time': resource['execution_time']
+            }
+        
+        return efficiency
+    
+    def print_resource_status(self):
+        """打印当前资源状态（用于调试）"""
+        print(f"\n当前资源状态 (Step {getattr(self, 'current_time', 0)}):")
+        print(f"进程索引: {self.current_process_idx}, 任务索引: {self.current_task_idx}")
+        
+        for host, resource in self.available_resources.items():
+            cpu_util = resource['cpu_used'] / resource['cpu_capacity'] if resource['cpu_capacity'] > 0 else 0
+            mem_util = resource['memory_used'] / resource['memory_capacity'] if resource['memory_capacity'] > 0 else 0
+            
+            print(f"  {host}:")
+            print(f"    CPU: {resource['cpu_used']:.1f}/{resource['cpu_capacity']:.1f} ({cpu_util:.1%})")
+            print(f"    Memory: {resource['memory_used']:.1f}/{resource['memory_capacity']:.1f} ({mem_util:.1%})")
+            print(f"    执行时间: {resource['execution_time']:.1f}s")
+        
+        if self.current_task_idx < len(self.current_process_tasks):
+            current_task = self.current_process_tasks.iloc[self.current_task_idx]
+            print(f"  当前任务: {current_task['name']} (类型: {current_task.get('task_type', 'UNKNOWN')})")
+            print(f"  CPU需求: {self._estimate_task_cpu_requirement(current_task):.1f}")
+            print(f"  内存需求: {self._estimate_task_memory_requirement(current_task):.1f}")
     
     def get_schedule_history(self) -> List[Dict]:
         """获取调度历史"""
