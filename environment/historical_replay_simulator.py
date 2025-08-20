@@ -58,7 +58,7 @@ class HistoricalReplaySimulator:
         # 获取有任务的进程ID
         processes_with_tasks = self.task_instances['process_instance_id'].unique()
         
-        # 获取成功且有任务的进程实例，增加处理的进程数量
+        # 获取成功且有任务的进程实例
         self.successful_processes = self.process_instances[
             (self.process_instances['state'] == 7) & 
             (self.process_instances['id'].isin(processes_with_tasks))
@@ -68,13 +68,26 @@ class HistoricalReplaySimulator:
             self.logger.warning("No successful process instances with tasks found!")
             return
         
-        # 限制处理的进程数量，避免单个episode过长
-        max_processes_per_episode = 20  # 每个episode最多处理20个进程
-        if len(self.successful_processes) > max_processes_per_episode:
-            self.successful_processes = self.successful_processes.head(max_processes_per_episode)
-            self.logger.info(f"Limited to {max_processes_per_episode} processes per episode")
+        # 修复：增加处理的进程数量，允许处理更多数据
+        # 可以通过环境变量或配置来调整
+        from config.config import Config
+        max_processes_per_episode = Config.MAX_PROCESSES_PER_EPISODE
         
-        self.logger.info(f"Found {len(self.successful_processes)} successful processes with tasks")
+        if len(self.successful_processes) > max_processes_per_episode:
+            # 随机采样，确保数据多样性
+            import random
+            random.seed(Config.RANDOM_SEED)  # 使用配置的随机种子
+            sampled_indices = random.sample(range(len(self.successful_processes)), max_processes_per_episode)
+            self.successful_processes = self.successful_processes.iloc[sampled_indices].reset_index(drop=True)
+            self.logger.info(f"Sampled {max_processes_per_episode} processes from {len(self.process_instances)} total processes")
+        
+        self.logger.info(f"Processing {len(self.successful_processes)} successful processes with tasks")
+        total_tasks = len(self.task_instances[self.task_instances['process_instance_id'].isin(self.successful_processes['id'])])
+        self.logger.info(f"Total tasks to process: {total_tasks}")
+        
+        # 如果任务数量过多，也可以进行采样
+        if total_tasks > Config.MAX_TASKS_PER_EPISODE:
+            self.logger.info(f"Task count {total_tasks} exceeds limit {Config.MAX_TASKS_PER_EPISODE}, consider adjusting MAX_TASKS_PER_EPISODE")
         
         # 初始化第一个进程
         self._load_current_process()
@@ -646,6 +659,110 @@ class HistoricalReplaySimulator:
     def num_resources(self) -> int:
         """返回可用资源数量"""
         return len(self.available_resources)
+    
+    @property
+    def tasks(self) -> List[Dict]:
+        """为传统算法提供任务列表接口"""
+        tasks = []
+        for _, task in self.task_instances.iterrows():
+            if task['process_instance_id'] in self.successful_processes['id'].values:
+                task_dict = {
+                    'id': task['id'],
+                    'name': task['name'],
+                    'duration': self._estimate_task_duration(task),
+                    'cpu_req': self._estimate_task_cpu_requirement(task),
+                    'memory_req': self._estimate_task_memory_requirement(task),
+                    'priority': task.get('task_instance_priority', 0),
+                    'task_type': task.get('task_type', 'SHELL')
+                }
+                tasks.append(task_dict)
+        return tasks
+    
+    @property
+    def resources(self) -> List[Dict]:
+        """为传统算法提供资源列表接口"""
+        resources = []
+        for host, resource in self.available_resources.items():
+            resource_dict = {
+                'id': host,
+                'name': host,
+                'cpu_capacity': resource['cpu_capacity'],
+                'memory_capacity': resource['memory_capacity'],
+                'cpu_used': resource['cpu_used'],
+                'memory_used': resource['memory_used']
+            }
+            resources.append(resource_dict)
+        return resources
+    
+    @property
+    def dependencies(self) -> List[Dict]:
+        """为传统算法提供任务依赖关系接口"""
+        dependencies = []
+        for _, relation in self.process_task_relations.iterrows():
+            if (relation['process_definition_code'] in 
+                self.successful_processes['process_definition_code'].values):
+                dep = {
+                    'pre_task': relation['pre_task_code'],
+                    'post_task': relation['post_task_code'],
+                    'process_code': relation['process_definition_code']
+                }
+                dependencies.append(dep)
+        return dependencies
+    
+    def _estimate_task_duration(self, task: pd.Series) -> float:
+        """估算任务执行时间"""
+        if pd.notna(task.get('start_time')) and pd.notna(task.get('end_time')):
+            start_time = pd.to_datetime(task['start_time'])
+            end_time = pd.to_datetime(task['end_time'])
+            return (end_time - start_time).total_seconds()
+        else:
+            # 使用估算时间
+            task_type = task.get('task_type', 'SHELL')
+            duration_map = {
+                'SQL': 30.0,
+                'SHELL': 10.0,
+                'PYTHON': 60.0,
+                'JAVA': 120.0,
+                'SPARK': 300.0,
+                'FLINK': 300.0,
+                'HTTP': 5.0
+            }
+            return duration_map.get(task_type, 30.0)
+    
+    def simulate_random_schedule(self, algorithm_name: str) -> Dict:
+        """为RL算法提供随机调度接口"""
+        # 重置模拟器
+        self.reset()
+        
+        # 随机调度所有任务
+        total_reward = 0
+        step_count = 0
+        max_steps = len(self.task_instances) * 2  # 设置最大步数
+        
+        while not self.is_done() and step_count < max_steps:
+            # 随机选择动作
+            import random
+            action = random.randint(0, max(0, self.num_resources - 1))
+            
+            # 执行动作
+            state, reward, done, info = self.step(action)
+            total_reward += reward
+            step_count += 1
+            
+            if done:
+                break
+        
+        # 返回调度结果
+        return {
+            'algorithm': algorithm_name,
+            'metrics': {
+                'makespan': self.get_makespan(),
+                'resource_utilization': self.get_resource_utilization(),
+                'total_reward': total_reward,
+                'steps_taken': step_count
+            },
+            'schedule_history': self.get_schedule_history()
+        }
     
     def _sort_tasks_by_dependencies(self, process_definition_code: int) -> pd.DataFrame:
         """根据依赖关系对任务进行拓扑排序"""

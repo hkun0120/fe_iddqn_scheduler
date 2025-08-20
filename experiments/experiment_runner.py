@@ -431,11 +431,6 @@ class ExperimentRunner:
                 agent = DQNScheduler(state_size, action_size, self.device)
                 schedule_result = simulator.simulate_random_schedule(algorithm_name)
 
-            elif algorithm_name == "DQN":
-                state_size = 100  # 示例状态维度
-                action_size = simulator.num_resources
-                agent = DQNScheduler(state_size, action_size, self.device)
-                schedule_result = simulator.simulate_random_schedule(algorithm_name)
             elif algorithm_name == "DDQN":
                 state_size = 100  # 示例状态维度
                 action_size = simulator.num_resources
@@ -447,23 +442,48 @@ class ExperimentRunner:
                 agent = BF_DDQNScheduler(state_size, action_size, self.device)
                 schedule_result = simulator.simulate_random_schedule(algorithm_name)
             elif algorithm_name == "FIFO":
+                from baselines.traditional_schedulers import FIFOScheduler
                 scheduler = FIFOScheduler()
-                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, simulator.dependencies)
+                # 转换依赖关系格式
+                dependencies = [(dep['pre_task'], dep['post_task']) 
+                              for dep in simulator.dependencies 
+                              if dep['pre_task'] is not None and dep['post_task'] is not None]
+                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, dependencies)
             elif algorithm_name == "SJF":
+                from baselines.traditional_schedulers import SJFScheduler
                 scheduler = SJFScheduler()
-                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, simulator.dependencies)
+                dependencies = [(dep['pre_task'], dep['post_task']) 
+                              for dep in simulator.dependencies 
+                              if dep['pre_task'] is not None and dep['post_task'] is not None]
+                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, dependencies)
             elif algorithm_name == "HEFT":
+                from baselines.traditional_schedulers import HEFTScheduler
                 scheduler = HEFTScheduler()
-                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, simulator.dependencies)
+                dependencies = [(dep['pre_task'], dep['post_task']) 
+                              for dep in simulator.dependencies 
+                              if dep['pre_task'] is not None and dep['post_task'] is not None]
+                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, dependencies)
             elif algorithm_name == "GA":
+                from baselines.meta_heuristics import GAScheduler
                 scheduler = GAScheduler()
-                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, simulator.dependencies)
+                dependencies = [(dep['pre_task'], dep['post_task']) 
+                              for dep in simulator.dependencies 
+                              if dep['pre_task'] is not None and dep['post_task'] is not None]
+                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, dependencies)
             elif algorithm_name == "PSO":
+                from baselines.meta_heuristics import PSOScheduler
                 scheduler = PSOScheduler()
-                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, simulator.dependencies)
+                dependencies = [(dep['pre_task'], dep['post_task']) 
+                              for dep in simulator.dependencies 
+                              if dep['pre_task'] is not None and dep['post_task'] is not None]
+                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, dependencies)
             elif algorithm_name == "ACO":
+                from baselines.meta_heuristics import ACOScheduler
                 scheduler = ACOScheduler()
-                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, simulator.dependencies)
+                dependencies = [(dep['pre_task'], dep['post_task']) 
+                              for dep in simulator.dependencies 
+                              if dep['pre_task'] is not None and dep['post_task'] is not None]
+                schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, dependencies)
             else:
                 raise ValueError(f"Unknown algorithm: {algorithm_name}")
 
