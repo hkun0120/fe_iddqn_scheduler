@@ -373,6 +373,16 @@ class ExperimentRunner:
                         # 执行动作
                         next_state, reward, done, info = simulator.step(action)
                         
+                        # 添加step执行后的调试信息
+                        if step_count % 50 == 0:  # 每50步检查一次
+                            self.logger.info(f"        Step执行结果: reward={reward:.2f}, done={done}, info={info}")
+                            
+                            # 检查任务是否真的被调度了
+                            if 'task_scheduled' in info and info['task_scheduled']:
+                                self.logger.info(f"        ✅ 任务成功调度: {info.get('task_name', 'Unknown')} -> {info.get('host', 'Unknown')}")
+                            else:
+                                self.logger.warning(f"        ⚠️  任务调度失败或未调度")
+                        
                         # 存储经验
                         agent.store_experience(state, action, reward, next_state, done)
                         
@@ -383,12 +393,77 @@ class ExperimentRunner:
                         episode_reward += reward
                         step_count += 1
                         
-                        # 添加调试信息
+                        # 添加详细的调试信息
+                        if step_count % 50 == 0:  # 更频繁的日志输出
+                            process_info = simulator.get_current_process_info()
+                            if process_info:
+                                self.logger.info(f"      Step {step_count}: Process {process_info['process_id']}, "
+                                               f"Completed: {process_info['completed_tasks']}/{process_info['total_tasks']}")
+                                
+                                # 检查当前任务状态
+                                if hasattr(simulator, 'current_task_idx') and hasattr(simulator, 'current_process_tasks'):
+                                    if simulator.current_task_idx < len(simulator.current_process_tasks):
+                                        current_task = simulator.current_process_tasks.iloc[simulator.current_task_idx]
+                                        self.logger.info(f"        当前任务: {current_task.get('name', 'Unknown')} "
+                                                       f"(ID: {current_task.get('id', 'Unknown')})")
+                                        
+                                        # 检查任务资源需求
+                                        if hasattr(simulator, '_estimate_task_cpu_requirement'):
+                                            cpu_req = simulator._estimate_task_cpu_requirement(current_task)
+                                            memory_req = simulator._estimate_task_memory_requirement(current_task)
+                                            self.logger.info(f"        资源需求: CPU {cpu_req:.1f}, Memory {memory_req:.1f}")
+                                    
+                                # 检查资源状态
+                                if hasattr(simulator, 'available_resources'):
+                                    self.logger.info(f"        资源状态:")
+                                    for host, resource in simulator.available_resources.items():
+                                        cpu_used = resource.get('cpu_used', 0)
+                                        cpu_capacity = resource.get('cpu_capacity', 0)
+                                        memory_used = resource.get('memory_used', 0)
+                                        memory_capacity = resource.get('memory_capacity', 0)
+                                        self.logger.info(f"          {host}: CPU {cpu_used:.1f}/{cpu_capacity:.1f}, "
+                                                       f"Memory {memory_used:.1f}/{memory_capacity:.1f}")
+                                
+                                # 检查任务完成状态
+                                if hasattr(simulator, 'completed_tasks'):
+                                    self.logger.info(f"        已完成任务数: {len(simulator.completed_tasks)}")
+                                
+                                # 检查进程和任务索引
+                                if hasattr(simulator, 'current_process_idx'):
+                                    self.logger.info(f"        当前进程索引: {simulator.current_process_idx}")
+                                if hasattr(simulator, 'current_task_idx'):
+                                    self.logger.info(f"        当前任务索引: {simulator.current_task_idx}")
+                                
+                                # 检查是否卡住
+                                if step_count > 200 and process_info['completed_tasks'] == 0:
+                                    self.logger.warning(f"        ⚠️  警告: 200步后仍无任务完成，可能存在卡住问题！")
+                                
+                                if step_count > 500 and process_info['completed_tasks'] == 0:
+                                    self.logger.error(f"        ❌ 错误: 500步后仍无任务完成，强制检查问题！")
+                                    # 强制检查当前状态
+                                    if hasattr(simulator, 'ready_tasks'):
+                                        self.logger.info(f"          可调度任务: {simulator.ready_tasks}")
+                                    if hasattr(simulator, 'is_done'):
+                                        self.logger.info(f"          是否完成: {simulator.is_done()}")
+                        
+                        # 每100步的原有日志
                         if step_count % 100 == 0:
                             process_info = simulator.get_current_process_info()
                             if process_info:
                                 self.logger.info(f"      Step {step_count}: Process {process_info['process_id']}, "
                                                f"Completed: {process_info['completed_tasks']}/{process_info['total_tasks']}")
+                        
+                        # 检查是否卡住，强制切换进程
+                        if step_count > 1000 and process_info and process_info['completed_tasks'] == 0:
+                            self.logger.error(f"        🚨 严重错误: 1000步后仍无任务完成，强制切换到下一个进程！")
+                            if hasattr(simulator, 'current_process_idx') and hasattr(simulator, '_load_current_process'):
+                                simulator.current_process_idx += 1
+                                if simulator._load_current_process():
+                                    self.logger.info(f"        强制切换到进程索引: {simulator.current_process_idx}")
+                                    step_count = 0  # 重置步数
+                                else:
+                                    self.logger.info(f"        所有进程已完成，退出循环")
+                                    break
                         
                         if done:
                             break
