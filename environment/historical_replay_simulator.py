@@ -267,11 +267,29 @@ class HistoricalReplaySimulator:
             if task_idx < len(self.current_process_tasks):
                 # 获取实际任务
                 task = self.current_process_tasks.iloc[task_idx]
-                features = self._extract_task_features(task)
-                current_batch_tasks.append(features)
+                try:
+                    features = self._extract_task_features(task)
+                    # 确保特征数量一致
+                    if len(features) != 16:
+                        self.logger.warning(f"Task {task_idx} has {len(features)} features, expected 16. Padding with zeros.")
+                        # 填充到16个特征
+                        while len(features) < 16:
+                            features.append(0.0)
+                        features = features[:16]  # 截断到16个
+                    current_batch_tasks.append(features)
+                except Exception as e:
+                    self.logger.error(f"Error extracting features for task {task_idx}: {e}")
+                    # 使用默认特征
+                    current_batch_tasks.append([0.0] * 16)
             else:
-                # 填充空任务
-                current_batch_tasks.append([0.0] * 16)
+                # 使用合理的默认值填充空任务
+                # 0值明确表示"这个位置没有任务"
+                default_features = [
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # 无任务类型
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,  # 无资源需求
+                    0.0, 0.0  # 无位置信息
+                ]
+                current_batch_tasks.append(default_features)
         
         task_features = current_batch_tasks
         
@@ -310,7 +328,7 @@ class HistoricalReplaySimulator:
         return task_array, resource_array
     
     def _extract_task_features(self, task: pd.Series) -> List[float]:
-        """提取任务特征"""
+        """提取任务特征，包含更多细粒度信息"""
         # 任务类型编码
         task_type_encoding = {
             'SQL': [1, 0, 0, 0, 0, 0, 0],
@@ -325,7 +343,7 @@ class HistoricalReplaySimulator:
         task_type = task.get('task_type', 'SHELL')
         type_encoding = task_type_encoding.get(task_type, [0, 0, 0, 0, 0, 0, 0])
         
-        # 估算任务资源需求
+        # 智能估算任务资源需求
         cpu_req = self._estimate_task_cpu_requirement(task)
         memory_req = self._estimate_task_memory_requirement(task)
         
@@ -353,26 +371,81 @@ class HistoricalReplaySimulator:
         except (ValueError, TypeError):
             retry_times = 0.0
         
+        # 任务复杂度分析
+        complexity_score = self._calculate_task_complexity_score(task)
+        
+        # 计算任务依赖数量
+        dependency_count = self._calculate_task_dependencies_count(task)
+        
         # 组合特征
         features = type_encoding + [
-            cpu_req,
-            memory_req,
-            duration,
-            priority,
-            retry_times,
-            self.current_task_idx,  # 任务在队列中的位置
+            cpu_req,                    # CPU需求
+            memory_req,                 # 内存需求
+            duration,                   # 执行时间
+            priority,                   # 优先级
+            retry_times,                # 重试次数
+            complexity_score,           # 复杂度评分
+            dependency_count,           # 任务依赖数量
+            self.current_task_idx,      # 任务在队列中的位置
             len(self.current_process_tasks) - self.current_task_idx,  # 剩余任务数
-            # 添加缺失的2个特征，使总数达到16个
-            float(task.get('process_definition_id', 0)),  # 流程定义ID（有意义：表示工作流类型）
-            float(self._calculate_task_dependencies_count(task))  # 任务依赖数量（有意义：影响调度顺序）
         ]
+        
+        # 确保特征数量为16个
+        # 16 = 7(任务类型) + 9(其他特征)
+        assert len(features) == 16, f"Expected 16 features, got {len(features)}"
         
         return features
     
+    def _calculate_task_complexity_score(self, task: pd.Series) -> float:
+        """计算任务的综合复杂度评分"""
+        task_type = task.get('task_type', 'SHELL')
+        complexity = 1.0
+        
+        if task_type == 'SQL':
+            complexity = self._analyze_sql_complexity(task)
+        elif task_type == 'PYTHON':
+            complexity = self._analyze_python_complexity(task)
+        elif task_type == 'JAVA':
+            complexity = self._analyze_java_complexity(task)
+        elif task_type in ['SPARK', 'FLINK']:
+            complexity = self._analyze_data_scale(task)
+        
+        # 根据任务持续时间调整复杂度
+        if pd.notna(task.get('start_time')) and pd.notna(task.get('end_time')):
+            try:
+                start_time = pd.to_datetime(task['start_time'])
+                end_time = pd.to_datetime(task['end_time'])
+                duration = (end_time - start_time).total_seconds()
+                
+                # 时间越长，复杂度越高
+                if duration > 300:  # 5分钟
+                    complexity += 0.3
+                if duration > 600:  # 10分钟
+                    complexity += 0.3
+                if duration > 1800:  # 30分钟
+                    complexity += 0.5
+                if duration > 3600:  # 1小时
+                    complexity += 0.8
+            except Exception:
+                pass
+        
+        # 根据优先级调整复杂度
+        priority = task.get('task_instance_priority', 0)
+        if priority > 0:
+            complexity += 0.2
+        
+        # 根据重试次数调整复杂度
+        retry_times = task.get('retry_times', 0)
+        if retry_times > 0:
+            complexity += retry_times * 0.1
+        
+        return min(complexity, 5.0)  # 最大复杂度5.0
+    
     def _estimate_task_cpu_requirement(self, task: pd.Series) -> float:
-        """估算任务的CPU需求"""
+        """智能估算任务的CPU需求，考虑任务具体特征"""
         task_type = task.get('task_type', 'SHELL')
         
+        # 基础CPU需求
         base_cpu = {
             'SQL': 2.0,
             'SHELL': 1.0,
@@ -383,12 +456,46 @@ class HistoricalReplaySimulator:
             'HTTP': 1.0
         }.get(task_type, 1.0)
         
-        return base_cpu
+        # 根据任务具体特征调整CPU需求
+        adjusted_cpu = base_cpu
+        
+        if task_type == 'SQL':
+            # SQL任务：根据SQL复杂度调整
+            sql_complexity = self._analyze_sql_complexity(task)
+            adjusted_cpu = base_cpu * sql_complexity
+            
+        elif task_type == 'PYTHON':
+            # Python任务：根据脚本复杂度调整
+            script_complexity = self._analyze_python_complexity(task)
+            adjusted_cpu = base_cpu * script_complexity
+            
+        elif task_type == 'JAVA':
+            # Java任务：根据应用类型调整
+            app_complexity = self._analyze_java_complexity(task)
+            adjusted_cpu = base_cpu * app_complexity
+            
+        elif task_type in ['SPARK', 'FLINK']:
+            # 大数据任务：根据数据规模调整
+            data_scale = self._analyze_data_scale(task)
+            adjusted_cpu = base_cpu * data_scale
+        
+        # 考虑任务优先级
+        priority = task.get('task_instance_priority', 0)
+        if priority > 0:
+            adjusted_cpu *= 1.2  # 高优先级任务需要更多资源
+        
+        # 考虑重试次数
+        retry_times = task.get('retry_times', 0)
+        if retry_times > 0:
+            adjusted_cpu *= (1.0 + retry_times * 0.1)  # 重试任务可能需要更多资源
+        
+        return min(adjusted_cpu, 16.0)  # 设置上限
     
     def _estimate_task_memory_requirement(self, task: pd.Series) -> float:
-        """估算任务的内存需求"""
+        """智能估算任务的内存需求，考虑任务具体特征"""
         task_type = task.get('task_type', 'SHELL')
         
+        # 基础内存需求
         base_memory = {
             'SQL': 1.0,
             'SHELL': 0.5,
@@ -399,7 +506,167 @@ class HistoricalReplaySimulator:
             'HTTP': 1.0
         }.get(task_type, 1.0)
         
-        return base_memory
+        # 根据任务具体特征调整内存需求
+        adjusted_memory = base_memory
+        
+        if task_type == 'SQL':
+            # SQL任务：根据查询复杂度调整
+            sql_complexity = self._analyze_sql_complexity(task)
+            adjusted_memory = base_memory * sql_complexity
+            
+        elif task_type == 'PYTHON':
+            # Python任务：根据数据处理需求调整
+            data_processing = self._analyze_python_data_processing(task)
+            adjusted_memory = base_memory * data_processing
+            
+        elif task_type == 'JAVA':
+            # Java任务：根据应用内存需求调整
+            app_memory = self._analyze_java_memory_usage(task)
+            adjusted_memory = base_memory * app_memory
+            
+        elif task_type in ['SPARK', 'FLINK']:
+            # 大数据任务：根据数据规模调整
+            data_scale = self._analyze_data_scale(task)
+            adjusted_memory = base_memory * data_scale
+        
+        # 考虑任务优先级
+        priority = task.get('task_instance_priority', 0)
+        if priority > 0:
+            adjusted_memory *= 1.3  # 高优先级任务需要更多内存
+        
+        return min(adjusted_memory, 64.0)  # 设置上限
+    
+    def _analyze_sql_complexity(self, task: pd.Series) -> float:
+        """分析SQL任务的复杂度"""
+        # 尝试从任务名称或描述中提取SQL特征
+        task_name = str(task.get('name', '')).upper()
+        task_desc = str(task.get('description', '')).upper()
+        
+        complexity = 1.0  # 基础复杂度
+        
+        # 根据SQL关键词判断复杂度
+        if any(keyword in task_name or keyword in task_desc for keyword in ['JOIN', 'UNION', 'GROUP BY', 'ORDER BY']):
+            complexity += 0.5  # 中等复杂度
+        
+        if any(keyword in task_name or keyword in task_desc for keyword in ['SUBQUERY', 'CTE', 'WINDOW', 'PARTITION']):
+            complexity += 0.8  # 高复杂度
+        
+        if any(keyword in task_name or keyword in task_desc for keyword in ['ANALYTIC', 'LAG', 'LEAD', 'RANK']):
+            complexity += 1.0  # 分析函数，很高复杂度
+        
+        # 根据任务持续时间调整（如果有历史数据）
+        if pd.notna(task.get('start_time')) and pd.notna(task.get('end_time')):
+            try:
+                start_time = pd.to_datetime(task['start_time'])
+                end_time = pd.to_datetime(task['end_time'])
+                duration = (end_time - start_time).total_seconds()
+                
+                # 根据执行时间调整复杂度
+                if duration > 300:  # 5分钟以上
+                    complexity += 0.5
+                if duration > 600:  # 10分钟以上
+                    complexity += 0.5
+                if duration > 1800:  # 30分钟以上
+                    complexity += 1.0
+            except Exception:
+                pass
+        
+        return max(complexity, 0.5)  # 最小复杂度0.5
+    
+    def _analyze_python_complexity(self, task: pd.Series) -> float:
+        """分析Python任务的复杂度"""
+        task_name = str(task.get('name', '')).lower()
+        task_desc = str(task.get('description', '')).lower()
+        
+        complexity = 1.0
+        
+        # 根据Python库和功能判断复杂度
+        if any(lib in task_name or lib in task_desc for lib in ['pandas', 'numpy', 'matplotlib']):
+            complexity += 0.3  # 数据处理库
+        
+        if any(lib in task_name or lib in task_desc for lib in ['sklearn', 'tensorflow', 'pytorch']):
+            complexity += 0.8  # 机器学习库
+        
+        if any(lib in task_name or lib in task_desc for lib in ['requests', 'urllib', 'selenium']):
+            complexity += 0.2  # 网络请求库
+        
+        if any(lib in task_name or lib in task_desc for lib in ['multiprocessing', 'threading', 'asyncio']):
+            complexity += 0.5  # 并发处理库
+        
+        return max(complexity, 0.5)
+    
+    def _analyze_java_complexity(self, task: pd.Series) -> float:
+        """分析Java任务的复杂度"""
+        task_name = str(task.get('name', '')).lower()
+        task_desc = str(task.get('description', '')).lower()
+        
+        complexity = 1.0
+        
+        # 根据Java应用类型判断复杂度
+        if any(keyword in task_name or keyword in task_desc for keyword in ['web', 'servlet', 'spring']):
+            complexity += 0.3  # Web应用
+        
+        if any(keyword in task_name or keyword in task_desc for keyword in ['batch', 'job', 'scheduler']):
+            complexity += 0.5  # 批处理任务
+        
+        if any(keyword in task_name or keyword in task_desc for keyword in ['stream', 'kafka', 'rabbitmq']):
+            complexity += 0.4  # 流处理
+        
+        return max(complexity, 0.5)
+    
+    def _analyze_data_scale(self, task: pd.Series) -> float:
+        """分析大数据任务的规模"""
+        task_name = str(task.get('name', '')).lower()
+        task_desc = str(task.get('description', '')).lower()
+        
+        scale = 1.0
+        
+        # 根据数据规模关键词判断
+        if any(keyword in task_name or keyword in task_desc for keyword in ['gb', 'gigabyte', 'large']):
+            scale += 0.5  # GB级数据
+        
+        if any(keyword in task_name or keyword in task_desc for keyword in ['tb', 'terabyte', 'huge']):
+            scale += 1.0  # TB级数据
+        
+        if any(keyword in task_name or keyword in task_desc for keyword in ['pb', 'petabyte', 'massive']):
+            scale += 2.0  # PB级数据
+        
+        return max(scale, 0.5)
+    
+    def _analyze_python_data_processing(self, task: pd.Series) -> float:
+        """分析Python任务的数据处理需求"""
+        task_name = str(task.get('name', '')).lower()
+        task_desc = str(task.get('description', '')).lower()
+        
+        processing = 1.0
+        
+        # 根据数据处理类型判断内存需求
+        if any(keyword in task_name or keyword in task_desc for keyword in ['csv', 'json', 'xml']):
+            processing += 0.2  # 文件处理
+        
+        if any(keyword in task_name or keyword in task_desc for keyword in ['database', 'sql', 'mongodb']):
+            processing += 0.4  # 数据库操作
+        
+        if any(keyword in task_name or keyword in task_desc for keyword in ['image', 'video', 'audio']):
+            processing += 0.6  # 多媒体处理
+        
+        return max(processing, 0.5)
+    
+    def _analyze_java_memory_usage(self, task: pd.Series) -> float:
+        """分析Java任务的内存使用模式"""
+        task_name = str(task.get('name', '')).lower()
+        task_desc = str(task.get('description', '')).lower()
+        
+        memory = 1.0
+        
+        # 根据Java应用类型判断内存需求
+        if any(keyword in task_name or keyword in task_desc for keyword in ['cache', 'redis', 'memory']):
+            memory += 0.5  # 缓存应用
+        
+        if any(keyword in task_name or keyword in task_desc for keyword in ['batch', 'bulk', 'large']):
+            memory += 0.4  # 批处理应用
+        
+        return max(memory, 0.5)
     
     def _calculate_task_dependencies_count(self, task: pd.Series) -> int:
         """计算任务的依赖数量（前置任务数量）"""
@@ -511,6 +778,9 @@ class HistoricalReplaySimulator:
             # 任务完成后立即释放资源（模拟任务执行完成）
             resource['cpu_used'] = max(0, resource['cpu_used'] - cpu_req)
             resource['memory_used'] = max(0, resource['memory_used'] - memory_req)
+            
+            # 记录任务完成
+            self.completed_tasks.add(current_task['id'])
             
             # 移动到下一个任务
             self.current_task_idx += 1
@@ -646,12 +916,17 @@ class HistoricalReplaySimulator:
         """获取当前进程信息"""
         if self.current_process_idx < len(self.successful_processes):
             process = self.successful_processes.iloc[self.current_process_idx]
+            
+            # 计算当前进程中已完成的任务数量
+            current_process_task_ids = set(self.current_process_tasks['id'])
+            completed_in_current_process = len(self.completed_tasks.intersection(current_process_task_ids))
+            
             return {
                 'process_id': process['id'],
                 'process_name': process['name'],
                 'total_tasks': len(self.current_process_tasks),
-                'completed_tasks': self.current_task_idx,
-                'remaining_tasks': len(self.current_process_tasks) - self.current_task_idx
+                'completed_tasks': completed_in_current_process,
+                'remaining_tasks': len(self.current_process_tasks) - completed_in_current_process
             }
         return {}
     
