@@ -393,6 +393,11 @@ class ExperimentRunner:
                         episode_reward += reward
                         step_count += 1
                         
+                        # 修复：如果episode完成，立即退出循环
+                        if simulator.is_done():
+                            self.logger.info(f"        🎯 Episode在第{step_count}步完成，退出训练循环")
+                            break
+                        
                         # 添加详细的调试信息
                         if step_count % 50 == 0:  # 更频繁的日志输出
                             process_info = simulator.get_current_process_info()

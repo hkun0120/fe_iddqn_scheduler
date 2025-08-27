@@ -47,6 +47,12 @@ class HistoricalReplaySimulator:
     
     def reset(self):
         """重置仿真环境"""
+        # 增加episode计数器
+        if not hasattr(self, 'episode_count'):
+            self.episode_count = 0
+        else:
+            self.episode_count += 1
+            
         self.current_time = 0
         self.current_process_idx = 0
         self.current_task_idx = 0
@@ -76,10 +82,12 @@ class HistoricalReplaySimulator:
         if len(self.successful_processes) > max_processes_per_episode:
             # 随机采样，确保数据多样性
             import random
-            random.seed(Config.RANDOM_SEED)  # 使用配置的随机种子
+            # 修复：使用episode计数器确保每次采样不同的数据
+            episode_count = getattr(self, 'episode_count', 0)
+            random.seed(Config.RANDOM_SEED + episode_count)  # 每次使用不同的随机种子
             sampled_indices = random.sample(range(len(self.successful_processes)), max_processes_per_episode)
             self.successful_processes = self.successful_processes.iloc[sampled_indices].reset_index(drop=True)
-            self.logger.info(f"Sampled {max_processes_per_episode} processes from {len(self.process_instances)} total processes")
+            self.logger.info(f"Episode {episode_count}: Sampled {max_processes_per_episode} processes from {len(self.process_instances)} total processes")
         
         self.logger.info(f"Processing {len(self.successful_processes)} successful processes with tasks")
         total_tasks = len(self.task_instances[self.task_instances['process_instance_id'].isin(self.successful_processes['id'])])
@@ -447,14 +455,14 @@ class HistoricalReplaySimulator:
         
         # 基础CPU需求
         base_cpu = {
-            'SQL': 2.0,
-            'SHELL': 1.0,
-            'PYTHON': 2.0,
-            'JAVA': 3.0,
-            'SPARK': 4.0,
-            'FLINK': 4.0,
-            'HTTP': 1.0
-        }.get(task_type, 1.0)
+            'SQL': 0.2,
+            'SHELL': 0.1,
+            'PYTHON': 0.2,
+            'JAVA': 0.3,
+            'SPARK': 1.0,
+            'FLINK': 1.0,
+            'HTTP': 0.1
+        }.get(task_type, 0.1)
         
         # 根据任务具体特征调整CPU需求
         adjusted_cpu = base_cpu
@@ -497,14 +505,14 @@ class HistoricalReplaySimulator:
         
         # 基础内存需求
         base_memory = {
-            'SQL': 1.0,
+            'SQL': 0.1,
             'SHELL': 0.5,
-            'PYTHON': 2.0,
-            'JAVA': 4.0,
-            'SPARK': 8.0,
-            'FLINK': 8.0,
-            'HTTP': 1.0
-        }.get(task_type, 1.0)
+            'PYTHON': 0.2,
+            'JAVA': 0.5,
+            'SPARK': 0.8,
+            'FLINK': 0.8,
+            'HTTP': 0.1
+        }.get(task_type, 0.1)
         
         # 根据任务具体特征调整内存需求
         adjusted_memory = base_memory
@@ -743,14 +751,14 @@ class HistoricalReplaySimulator:
                 # 使用估算时间
                 task_type = current_task.get('task_type', 'SHELL')
                 task_duration = {
-                    'SQL': 30.0,
+                    'SQL': 3.0,
                     'SHELL': 10.0,
                     'PYTHON': 60.0,
                     'JAVA': 120.0,
                     'SPARK': 300.0,
                     'FLINK': 300.0,
                     'HTTP': 5.0
-                }.get(task_type, 30.0)
+                }.get(task_type, 10.0)
             
             # 关键改进：基于真实时间的调度
             if resource['cpu_used'] <= cpu_req and resource['memory_used'] <= memory_req:
