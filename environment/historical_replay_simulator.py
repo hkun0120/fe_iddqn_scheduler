@@ -80,14 +80,19 @@ class HistoricalReplaySimulator:
         max_processes_per_episode = Config.MAX_PROCESSES_PER_EPISODE
         
         if len(self.successful_processes) > max_processes_per_episode:
-            # 随机采样，确保数据多样性
-            import random
-            # 修复：使用episode计数器确保每次采样不同的数据
-            episode_count = getattr(self, 'episode_count', 0)
-            random.seed(Config.RANDOM_SEED + episode_count)  # 每次使用不同的随机种子
-            sampled_indices = random.sample(range(len(self.successful_processes)), max_processes_per_episode)
-            self.successful_processes = self.successful_processes.iloc[sampled_indices].reset_index(drop=True)
-            self.logger.info(f"Episode {episode_count}: Sampled {max_processes_per_episode} processes from {len(self.process_instances)} total processes")
+            # 检查是否在公平比较模式下
+            if hasattr(self, 'use_fixed_instances') and self.use_fixed_instances:
+                # 公平比较模式：使用固定的工作流实例集
+                self.logger.info(f"公平比较模式：使用固定的工作流实例集，不进行随机采样")
+            else:
+                # 训练模式：随机采样，确保数据多样性
+                import random
+                # 修复：使用episode计数器确保每次采样不同的数据
+                episode_count = getattr(self, 'episode_count', 0)
+                random.seed(Config.RANDOM_SEED + episode_count)  # 每次使用不同的随机种子
+                sampled_indices = random.sample(range(len(self.successful_processes)), max_processes_per_episode)
+                self.successful_processes = self.successful_processes.iloc[sampled_indices].reset_index(drop=True)
+                self.logger.info(f"Episode {episode_count}: Sampled {max_processes_per_episode} processes from {len(self.process_instances)} total processes")
         
         self.logger.info(f"Processing {len(self.successful_processes)} successful processes with tasks")
         total_tasks = len(self.task_instances[self.task_instances['process_instance_id'].isin(self.successful_processes['id'])])
@@ -122,6 +127,59 @@ class HistoricalReplaySimulator:
         self.current_task_idx = 0
         return True
     
+    def _recalculate_dependencies_for_fixed_instances(self):
+        """为固定的工作流实例重新计算依赖关系"""
+        if not hasattr(self, 'use_fixed_instances') or not self.use_fixed_instances:
+            return
+        
+        self.logger.info("重新计算依赖关系以匹配固定的工作流实例...")
+        
+        # 创建任务代码到任务ID的映射
+        task_code_to_id = {}
+        current_task_ids = set()
+        
+        for _, task in self.task_instances.iterrows():
+            if task['process_instance_id'] in self.successful_processes['id'].values:
+                task_id = task['id']
+                task_code = task['task_code']
+                current_task_ids.add(task_id)
+                task_code_to_id[task_code] = task_id
+        
+        self.logger.info(f"当前工作流实例中的任务ID: {current_task_ids}")
+        self.logger.info(f"任务代码到ID的映射: {task_code_to_id}")
+        
+        # 过滤依赖关系，将任务代码转换为任务ID
+        filtered_dependencies = []
+        for _, relation in self.process_task_relations.iterrows():
+            if (relation['process_definition_code'] in 
+                self.successful_processes['process_definition_code'].values):
+                
+                pre_task_code = relation['pre_task_code']
+                post_task_code = relation['post_task_code']
+                
+                # 将任务代码转换为任务ID
+                pre_task_id = None if pre_task_code is None else task_code_to_id.get(pre_task_code)
+                post_task_id = task_code_to_id.get(post_task_code)
+                
+                # 只添加两个任务都在当前工作流实例中的依赖关系
+                if (pre_task_id is None or pre_task_id in current_task_ids) and post_task_id in current_task_ids:
+                    filtered_dependencies.append({
+                        'pre_task': pre_task_id,  # 使用任务ID而不是任务代码
+                        'post_task': post_task_id, # 使用任务ID而不是任务代码
+                        'process_code': relation['process_definition_code']
+                    })
+                    self.logger.info(f"  有效依赖: {pre_task_code}(ID:{pre_task_id}) -> {post_task_code}(ID:{post_task_id})")
+                else:
+                    self.logger.warning(f"  无效依赖: {pre_task_code}(ID:{pre_task_id}) -> {post_task_code}(ID:{post_task_id})")
+        
+        # 更新依赖关系
+        self._filtered_dependencies = filtered_dependencies
+        self.logger.info(f"过滤后的依赖关系数量: {len(filtered_dependencies)}")
+        
+        # 显示依赖关系详情
+        for dep in filtered_dependencies:
+            self.logger.info(f"  依赖: {dep['pre_task']} -> {dep['post_task']}")
+
     def _update_resources_for_new_process(self):
         """为新进程更新资源状态，保留累积的执行时间"""
         # 从当前进程的任务中提取主机信息
@@ -980,6 +1038,11 @@ class HistoricalReplaySimulator:
     @property
     def dependencies(self) -> List[Dict]:
         """为传统算法提供任务依赖关系接口"""
+        # 在公平比较模式下，使用过滤后的依赖关系
+        if hasattr(self, 'use_fixed_instances') and self.use_fixed_instances and hasattr(self, '_filtered_dependencies'):
+            return self._filtered_dependencies
+        
+        # 正常模式下，使用原始依赖关系
         dependencies = []
         for _, relation in self.process_task_relations.iterrows():
             if (relation['process_definition_code'] in 

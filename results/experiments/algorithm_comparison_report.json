@@ -1,0 +1,285 @@
+{
+  "FE_IDDQN": {
+    "avg_makespan": 40722.0,
+    "std_makespan": 0.0,
+    "avg_resource_utilization": 0.0,
+    "std_resource_utilization": 0.0,
+    "avg_reward": 599.8,
+    "std_reward": 0.0,
+    "n_experiments": 3,
+    "raw_results": [
+      {
+        "makespan": 40722.0,
+        "resource_utilization": 0.0,
+        "average_reward": 599.8,
+        "final_episode_reward": 599.8,
+        "training_losses": [],
+        "experiment_id": 0,
+        "algorithm": "FE_IDDQN"
+      },
+      {
+        "makespan": 40722.0,
+        "resource_utilization": 0.0,
+        "average_reward": 599.8,
+        "final_episode_reward": 599.8,
+        "training_losses": [],
+        "experiment_id": 1,
+        "algorithm": "FE_IDDQN"
+      },
+      {
+        "makespan": 40722.0,
+        "resource_utilization": 0.0,
+        "average_reward": 599.8,
+        "final_episode_reward": 599.8,
+        "training_losses": [],
+        "experiment_id": 2,
+        "algorithm": "FE_IDDQN"
+      }
+    ]
+  },
+  "FIFO": {
+    "avg_makespan": 3053.0,
+    "std_makespan": 0.0,
+    "avg_resource_utilization": 1.0,
+    "std_resource_utilization": 0.0,
+    "avg_reward": 0.0,
+    "std_reward": 0.0,
+    "n_experiments": 3,
+    "raw_results": [
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 0,
+        "algorithm": "FIFO"
+      },
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 1,
+        "algorithm": "FIFO"
+      },
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 2,
+        "algorithm": "FIFO"
+      }
+    ]
+  },
+  "SJF": {
+    "avg_makespan": 3053.0,
+    "std_makespan": 0.0,
+    "avg_resource_utilization": 1.0,
+    "std_resource_utilization": 0.0,
+    "avg_reward": 0.0,
+    "std_reward": 0.0,
+    "n_experiments": 3,
+    "raw_results": [
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 0,
+        "algorithm": "SJF"
+      },
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 1,
+        "algorithm": "SJF"
+      },
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 2,
+        "algorithm": "SJF"
+      }
+    ]
+  },
+  "HEFT": {
+    "avg_makespan": 587.0500000000001,
+    "std_makespan": 0.0,
+    "avg_resource_utilization": 5.200579167021548,
+    "std_resource_utilization": 0.0,
+    "avg_reward": 0.0,
+    "std_reward": 0.0,
+    "n_experiments": 3,
+    "raw_results": [
+      {
+        "makespan": 587.0500000000001,
+        "resource_utilization": 5.200579167021548,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 0,
+        "algorithm": "HEFT"
+      },
+      {
+        "makespan": 587.0500000000001,
+        "resource_utilization": 5.200579167021548,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 1,
+        "algorithm": "HEFT"
+      },
+      {
+        "makespan": 587.0500000000001,
+        "resource_utilization": 5.200579167021548,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 2,
+        "algorithm": "HEFT"
+      }
+    ]
+  },
+  "DQN": {
+    "avg_makespan": 0.0,
+    "std_makespan": 0.0,
+    "avg_resource_utilization": 0.0,
+    "std_resource_utilization": 0.0,
+    "avg_reward": 0.0,
+    "std_reward": 0.0,
+    "n_experiments": 3,
+    "raw_results": [
+      {
+        "makespan": 0,
+        "resource_utilization": 0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 0,
+        "algorithm": "DQN"
+      },
+      {
+        "makespan": 0,
+        "resource_utilization": 0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 1,
+        "algorithm": "DQN"
+      },
+      {
+        "makespan": 0,
+        "resource_utilization": 0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 2,
+        "algorithm": "DQN"
+      }
+    ]
+  },
+  "DDQN": {
+    "avg_makespan": 0.0,
+    "std_makespan": 0.0,
+    "avg_resource_utilization": 0.0,
+    "std_resource_utilization": 0.0,
+    "avg_reward": 0.0,
+    "std_reward": 0.0,
+    "n_experiments": 3,
+    "raw_results": [
+      {
+        "makespan": 0,
+        "resource_utilization": 0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 0,
+        "algorithm": "DDQN"
+      },
+      {
+        "makespan": 0,
+        "resource_utilization": 0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 1,
+        "algorithm": "DDQN"
+      },
+      {
+        "makespan": 0,
+        "resource_utilization": 0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 2,
+        "algorithm": "DDQN"
+      }
+    ]
+  },
+  "GA": {
+    "avg_makespan": 3053.0,
+    "std_makespan": 0.0,
+    "avg_resource_utilization": 1.0,
+    "std_resource_utilization": 0.0,
+    "avg_reward": 0.0,
+    "std_reward": 0.0,
+    "n_experiments": 3,
+    "raw_results": [
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 0,
+        "algorithm": "GA"
+      },
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 1,
+        "algorithm": "GA"
+      },
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 2,
+        "algorithm": "GA"
+      }
+    ]
+  },
+  "PSO": {
+    "avg_makespan": 3053.0,
+    "std_makespan": 0.0,
+    "avg_resource_utilization": 1.0,
+    "std_resource_utilization": 0.0,
+    "avg_reward": 0.0,
+    "std_reward": 0.0,
+    "n_experiments": 3,
+    "raw_results": [
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 0,
+        "algorithm": "PSO"
+      },
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 1,
+        "algorithm": "PSO"
+      },
+      {
+        "makespan": 3053.0,
+        "resource_utilization": 1.0,
+        "average_reward": 0,
+        "final_episode_reward": 0,
+        "experiment_id": 2,
+        "algorithm": "PSO"
+      }
+    ]
+  }
+}

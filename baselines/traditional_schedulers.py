@@ -61,7 +61,15 @@ class FIFOScheduler(BaseScheduler):
         
         # 按FIFO顺序调度任务
         for task_id in task_order:
-            task = next(t for t in tasks if t['id'] == task_id)
+            # 添加调试信息和错误处理
+            try:
+                task = next(t for t in tasks if t['id'] == task_id)
+            except StopIteration:
+                self.logger.error(f"Task ID {task_id} not found in tasks list!")
+                self.logger.error(f"Available task IDs: {[t['id'] for t in tasks]}")
+                self.logger.error(f"Task order from DAG: {task_order}")
+                self.logger.error(f"Task dependencies: {dependencies}")
+                raise ValueError(f"Task ID {task_id} not found in tasks list. Available IDs: {[t['id'] for t in tasks]}")
             
             # 找到最早可用的资源
             best_resource = None

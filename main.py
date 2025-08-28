@@ -16,6 +16,7 @@ sys.path.insert(0, str(project_root))
 from config.config import Config
 from data.data_loader import DataLoader
 from experiments.experiment_runner import ExperimentRunner
+from experiments.fair_comparison_runner import FairComparisonRunner
 from utils.logger import setup_logger
 
 
@@ -82,12 +83,20 @@ def main():
         else:
             logger.info(f"  平均奖励: {avg_reward}")
         
-        # 4. 运行基线算法进行比较
+        # 4. 运行公平比较实验
         logger.info("\n" + "="*60)
-        logger.info("运行基线算法进行比较")
+        logger.info("运行公平比较实验")
         logger.info("="*60)
         
-        baseline_algorithms = [
+        # 创建公平比较运行器
+        fair_comparison_runner = FairComparisonRunner(
+            data=data,
+            output_dir=output_dir
+        )
+        
+        # 定义要比较的算法
+        algorithms_to_compare = [
+            "FE_IDDQN",  # 我们的算法
             "FIFO",      # 先进先出
             "SJF",       # 最短作业优先
             "HEFT",      # 异构最早完成时间
@@ -97,32 +106,54 @@ def main():
             "PSO"        # 粒子群优化
         ]
         
-        comparison_results = {}
-        
-        for algorithm in baseline_algorithms:
-            try:
-                logger.info(f"\n正在运行 {algorithm} 算法...")
-                result = experiment_runner.run_algorithm(
-                    algorithm_name=algorithm,
-                    use_historical_replay=True
-                )
-                comparison_results[algorithm] = result
-                
-                logger.info(f"{algorithm} 完成:")
-                logger.info(f"  Makespan: {result.get('makespan', 'N/A')}")
-                logger.info(f"  资源利用率: {result.get('resource_utilization', 'N/A'):.2f}")
-                
-            except Exception as e:
-                logger.error(f"{algorithm} 算法运行失败: {e}")
-                comparison_results[algorithm] = {"error": str(e)}
+        # 运行公平比较实验
+        try:
+            logger.info("开始公平比较实验...")
+            logger.info("注意：所有算法将使用相同的工作流实例集，确保公平比较")
+            
+            comparison_results = fair_comparison_runner.run_algorithm_comparison(
+                algorithms=algorithms_to_compare,
+                n_experiments=3  # 每个算法运行3次
+            )
+            
+            logger.info("公平比较实验完成！")
+            
+        except Exception as e:
+            logger.error(f"公平比较实验失败: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # 如果公平比较失败，回退到原来的比较方式
+            logger.info("回退到原始比较方式...")
+            baseline_algorithms = [
+                "FIFO", "SJF", "HEFT", "DQN", "DDQN", "GA", "PSO"
+            ]
+            
+            comparison_results = {}
+            for algorithm in baseline_algorithms:
+                try:
+                    logger.info(f"\n正在运行 {algorithm} 算法...")
+                    result = experiment_runner.run_algorithm(
+                        algorithm_name=algorithm,
+                        use_historical_replay=True
+                    )
+                    comparison_results[algorithm] = result
+                    
+                    logger.info(f"{algorithm} 完成:")
+                    logger.info(f"  Makespan: {result.get('makespan', 'N/A')}")
+                    logger.info(f"  资源利用率: {result.get('resource_utilization', 'N/A'):.2f}")
+                    
+                except Exception as e:
+                    logger.error(f"{algorithm} 算法运行失败: {e}")
+                    comparison_results[algorithm] = {"error": str(e)}
+            
+            # 添加FE-IDDQN结果到比较中
+            comparison_results["FE_IDDQN"] = fe_iddqn_results
         
         # 5. 结果比较
         logger.info("\n" + "="*60)
         logger.info("算法性能比较")
         logger.info("="*60)
-        
-        # 添加FE-IDDQN结果到比较中
-        comparison_results["FE_IDDQN"] = fe_iddqn_results
         
         # 按makespan排序（越小越好）
         valid_results = {k: v for k, v in comparison_results.items() 

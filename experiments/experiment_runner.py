@@ -529,6 +529,25 @@ class ExperimentRunner:
                               for dep in simulator.dependencies 
                               if dep['pre_task'] is not None and dep['post_task'] is not None]
                 schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, dependencies)
+                
+                # 将调度结果转换为标准格式
+                if 'error' not in schedule_result:
+                    # 计算makespan和资源利用率
+                    if 'task_end_times' in schedule_result and schedule_result['task_end_times']:
+                        makespan = max(schedule_result['task_end_times'].values())
+                    else:
+                        makespan = 0
+                    
+                    # 计算资源利用率
+                    total_work = sum(task['duration'] for task in simulator.tasks)
+                    total_capacity = makespan * len(simulator.resources) if makespan > 0 else 1
+                    resource_utilization = total_work / total_capacity if total_capacity > 0 else 0
+                    
+                    schedule_result.update({
+                        'makespan': makespan,
+                        'resource_utilization': resource_utilization
+                    })
+                
             elif algorithm_name == "SJF":
                 from baselines.traditional_schedulers import SJFScheduler
                 scheduler = SJFScheduler()
@@ -536,6 +555,25 @@ class ExperimentRunner:
                               for dep in simulator.dependencies 
                               if dep['pre_task'] is not None and dep['post_task'] is not None]
                 schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, dependencies)
+                
+                # 将调度结果转换为标准格式
+                if 'error' not in schedule_result:
+                    # 计算makespan和资源利用率
+                    if 'task_end_times' in schedule_result and schedule_result['task_end_times']:
+                        makespan = max(schedule_result['task_end_times'].values())
+                    else:
+                        makespan = 0
+                    
+                    # 计算资源利用率
+                    total_work = sum(task['duration'] for task in simulator.tasks)
+                    total_capacity = makespan * len(simulator.resources) if makespan > 0 else 1
+                    resource_utilization = total_work / total_capacity if total_capacity > 0 else 0
+                    
+                    schedule_result.update({
+                        'makespan': makespan,
+                        'resource_utilization': resource_utilization
+                    })
+                
             elif algorithm_name == "HEFT":
                 from baselines.traditional_schedulers import HEFTScheduler
                 scheduler = HEFTScheduler()
@@ -543,6 +581,24 @@ class ExperimentRunner:
                               for dep in simulator.dependencies 
                               if dep['pre_task'] is not None and dep['post_task'] is not None]
                 schedule_result = scheduler.schedule(simulator.tasks, simulator.resources, dependencies)
+                
+                # 将调度结果转换为标准格式
+                if 'error' not in schedule_result:
+                    # 计算makespan和资源利用率
+                    if 'task_end_times' in schedule_result and schedule_result['task_end_times']:
+                        makespan = max(schedule_result['task_end_times'].values())
+                    else:
+                        makespan = 0
+                    
+                    # 计算资源利用率
+                    total_work = sum(task['duration'] for task in simulator.tasks)
+                    total_capacity = makespan * len(simulator.resources) if makespan > 0 else 1
+                    resource_utilization = total_work / total_capacity if total_capacity > 0 else 0
+                    
+                    schedule_result.update({
+                        'makespan': makespan,
+                        'resource_utilization': resource_utilization
+                    })
             elif algorithm_name == "GA":
                 from baselines.meta_heuristics import GAScheduler
                 scheduler = GAScheduler()
