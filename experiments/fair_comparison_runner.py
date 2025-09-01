@@ -107,14 +107,7 @@ class FairComparisonRunner:
         simulator.available_resources = {}
         simulator.task_schedule_history = []
         
-        # 设置公平比较模式标志
-        simulator.use_fixed_instances = True
-        
-        # 重要：确保依赖关系正确初始化
-        # 重新计算依赖关系，只包含当前工作流实例中的任务
-        simulator._recalculate_dependencies_for_fixed_instances()
-        
-        # 初始化第一个进程
+        # 初始化第一个进程（依赖关系会在_load_current_process中自动处理）
         simulator._load_current_process()
         
         return simulator
@@ -126,7 +119,10 @@ class FairComparisonRunner:
         self.logger.info("=" * 80)
         self.logger.info(f"参与比较的算法: {algorithms}")
         self.logger.info(f"每个算法运行次数: {n_experiments}")
-        self.logger.info(f"使用固定的工作流实例集: {len(self.fixed_workflow_instances)} 个工作流")
+        if self.fixed_workflow_instances is not None:
+            self.logger.info(f"使用固定的工作流实例集: {len(self.fixed_workflow_instances)} 个工作流")
+        else:
+            self.logger.warning("固定工作流实例集未初始化")
         
         results = {}
         

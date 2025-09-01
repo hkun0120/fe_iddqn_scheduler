@@ -80,27 +80,53 @@ class HistoricalReplaySimulator:
         max_processes_per_episode = Config.MAX_PROCESSES_PER_EPISODE
         
         if len(self.successful_processes) > max_processes_per_episode:
-            # 检查是否在公平比较模式下
-            if hasattr(self, 'use_fixed_instances') and self.use_fixed_instances:
-                # 公平比较模式：使用固定的工作流实例集
-                self.logger.info(f"公平比较模式：使用固定的工作流实例集，不进行随机采样")
-            else:
-                # 训练模式：随机采样，确保数据多样性
-                import random
-                # 修复：使用episode计数器确保每次采样不同的数据
-                episode_count = getattr(self, 'episode_count', 0)
-                random.seed(Config.RANDOM_SEED + episode_count)  # 每次使用不同的随机种子
-                sampled_indices = random.sample(range(len(self.successful_processes)), max_processes_per_episode)
-                self.successful_processes = self.successful_processes.iloc[sampled_indices].reset_index(drop=True)
-                self.logger.info(f"Episode {episode_count}: Sampled {max_processes_per_episode} processes from {len(self.process_instances)} total processes")
+            # 训练模式：随机采样，确保数据多样性
+            import random
+            # 修复：使用episode计数器确保每次采样不同的数据
+            episode_count = getattr(self, 'episode_count', 0)
+            random.seed(Config.RANDOM_SEED + episode_count)  # 每次使用不同的随机种子
+            sampled_indices = random.sample(range(len(self.successful_processes)), max_processes_per_episode)
+            self.successful_processes = self.successful_processes.iloc[sampled_indices].reset_index(drop=True)
+            self.logger.info(f"Episode {episode_count}: Sampled {max_processes_per_episode} processes from {len(self.process_instances)} total processes")
         
         self.logger.info(f"Processing {len(self.successful_processes)} successful processes with tasks")
         total_tasks = len(self.task_instances[self.task_instances['process_instance_id'].isin(self.successful_processes['id'])])
         self.logger.info(f"Total tasks to process: {total_tasks}")
         
-        # 如果任务数量过多，也可以进行采样
+        # 如果任务数量过多，进行智能采样
         if total_tasks > Config.MAX_TASKS_PER_EPISODE:
-            self.logger.info(f"Task count {total_tasks} exceeds limit {Config.MAX_TASKS_PER_EPISODE}, consider adjusting MAX_TASKS_PER_EPISODE")
+            self.logger.info(f"Task count {total_tasks} exceeds limit {Config.MAX_TASKS_PER_EPISODE}, performing intelligent sampling...")
+            
+            # 智能采样策略：优先选择任务数量适中的进程
+            process_task_counts = {}
+            for _, process in self.successful_processes.iterrows():
+                process_tasks = self.task_instances[
+                    self.task_instances['process_instance_id'] == process['id']
+                ]
+                process_task_counts[process['id']] = len(process_tasks)
+            
+            # 按任务数量排序，优先选择中等规模的进程
+            sorted_processes = sorted(process_task_counts.items(), key=lambda x: abs(x[1] - Config.MAX_TASKS_PER_EPISODE // 2))
+            
+            # 选择进程直到任务数量接近限制
+            selected_processes = []
+            current_task_count = 0
+            target_task_count = Config.MAX_TASKS_PER_EPISODE
+            
+            for process_id, task_count in sorted_processes:
+                if current_task_count + task_count <= target_task_count:
+                    selected_processes.append(process_id)
+                    current_task_count += task_count
+                else:
+                    break
+            
+            # 更新选中的进程
+            self.successful_processes = self.successful_processes[
+                self.successful_processes['id'].isin(selected_processes)
+            ].reset_index(drop=True)
+            
+            self.logger.info(f"Intelligent sampling: Selected {len(selected_processes)} processes with {current_task_count} tasks")
+            self.logger.info(f"Task count reduced from {total_tasks} to {current_task_count}")
         
         # 初始化第一个进程
         self._load_current_process()
@@ -117,7 +143,10 @@ class HistoricalReplaySimulator:
             self.task_instances['process_instance_id'] == current_process['id']
         ].sort_values('start_time').reset_index(drop=True)
         
-        # 关键修复：根据依赖关系排序任务
+        # 获取当前流程的依赖关系
+        self.current_process_dependencies = self._get_process_dependencies(current_process['process_definition_code'])
+        
+        # 根据依赖关系排序任务
         self.current_process_tasks = self._sort_tasks_by_dependencies(current_process['process_definition_code'])
         
         # 关键修复：保留累积的执行时间，只重置资源使用状态
@@ -127,56 +156,23 @@ class HistoricalReplaySimulator:
         self.current_task_idx = 0
         return True
     
-    def _recalculate_dependencies_for_fixed_instances(self):
-        """为固定的工作流实例重新计算依赖关系"""
-        if not hasattr(self, 'use_fixed_instances') or not self.use_fixed_instances:
-            return
+    def _get_process_dependencies(self, process_definition_code):
+        """获取指定流程的依赖关系"""
+        # 直接从关系表获取依赖关系，不需要复杂的转换
+        dependencies = self.process_task_relations[
+            self.process_task_relations['process_definition_code'] == process_definition_code
+        ]
         
-        self.logger.info("重新计算依赖关系以匹配固定的工作流实例...")
+        # 转换为简单的依赖列表
+        dependency_list = []
+        for _, relation in dependencies.iterrows():
+            dependency_list.append({
+                'pre_task_code': relation['pre_task_code'],
+                'post_task_code': relation['post_task_code']
+            })
         
-        # 创建任务代码到任务ID的映射
-        task_code_to_id = {}
-        current_task_ids = set()
-        
-        for _, task in self.task_instances.iterrows():
-            if task['process_instance_id'] in self.successful_processes['id'].values:
-                task_id = task['id']
-                task_code = task['task_code']
-                current_task_ids.add(task_id)
-                task_code_to_id[task_code] = task_id
-        
-        self.logger.info(f"当前工作流实例中的任务ID: {current_task_ids}")
-        self.logger.info(f"任务代码到ID的映射: {task_code_to_id}")
-        
-        # 过滤依赖关系，将任务代码转换为任务ID
-        filtered_dependencies = []
-        for _, relation in self.process_task_relations.iterrows():
-            if (relation['process_definition_code'] in 
-                self.successful_processes['process_definition_code'].values):
-                
-                pre_task_code = relation['pre_task_code']
-                post_task_code = relation['post_task_code']
-                
-                # 将任务代码转换为任务ID
-                pre_task_id = None if pre_task_code is None else task_code_to_id.get(pre_task_code)
-                post_task_id = task_code_to_id.get(post_task_code)
-                
-                # 只添加两个任务都在当前工作流实例中的依赖关系
-                if (pre_task_id is None or pre_task_id in current_task_ids) and post_task_id in current_task_ids:
-                    filtered_dependencies.append({
-                        'pre_task': pre_task_id,  # 使用任务ID而不是任务代码
-                        'post_task': post_task_id, # 使用任务ID而不是任务代码
-                        'process_code': relation['process_definition_code']
-                    })
-                    self.logger.info(f"  有效依赖: {pre_task_code}(ID:{pre_task_id}) -> {post_task_code}(ID:{post_task_id})")
-                else:
-                    self.logger.warning(f"  无效依赖: {pre_task_code}(ID:{pre_task_id}) -> {post_task_code}(ID:{post_task_id})")
-        
-        # 更新依赖关系
-        self._filtered_dependencies = filtered_dependencies
-        self.logger.info(f"过滤后的依赖关系数量: {len(filtered_dependencies)}")
-        
-        # 显示依赖关系详情
+        self.logger.info(f"流程 {process_definition_code} 的依赖关系数量: {len(dependency_list)}")
+        return dependency_list
         for dep in filtered_dependencies:
             self.logger.info(f"  依赖: {dep['pre_task']} -> {dep['post_task']}")
 
@@ -1038,22 +1034,20 @@ class HistoricalReplaySimulator:
     @property
     def dependencies(self) -> List[Dict]:
         """为传统算法提供任务依赖关系接口"""
-        # 在公平比较模式下，使用过滤后的依赖关系
-        if hasattr(self, 'use_fixed_instances') and self.use_fixed_instances and hasattr(self, '_filtered_dependencies'):
-            return self._filtered_dependencies
-        
-        # 正常模式下，使用原始依赖关系
-        dependencies = []
-        for _, relation in self.process_task_relations.iterrows():
-            if (relation['process_definition_code'] in 
-                self.successful_processes['process_definition_code'].values):
-                dep = {
-                    'pre_task': relation['pre_task_code'],
-                    'post_task': relation['post_task_code'],
-                    'process_code': relation['process_definition_code']
+        # 使用当前进程的依赖关系
+        if hasattr(self, 'current_process_dependencies') and self.current_process_dependencies:
+            # 转换为传统算法期望的格式
+            dependencies = []
+            for dep in self.current_process_dependencies:
+                dep_dict = {
+                    'pre_task': dep['pre_task_code'],
+                    'post_task': dep['post_task_code']
                 }
-                dependencies.append(dep)
-        return dependencies
+                dependencies.append(dep_dict)
+            return dependencies
+        
+        # 如果没有当前进程依赖关系，返回空列表
+        return []
     
     def _estimate_task_duration(self, task: pd.Series) -> float:
         """估算任务执行时间"""
@@ -1112,31 +1106,24 @@ class HistoricalReplaySimulator:
     
     def _sort_tasks_by_dependencies(self, process_definition_code: int) -> pd.DataFrame:
         """根据依赖关系对任务进行拓扑排序"""
-        if self.process_task_relations.empty:
-            return self.current_process_tasks
-        
-        # 获取当前进程的任务关系
-        process_relations = self.process_task_relations[
-            self.process_task_relations['process_definition_code'] == process_definition_code
-        ]
-        
-        if process_relations.empty:
+        # 使用已经获取的依赖关系
+        if not hasattr(self, 'current_process_dependencies') or not self.current_process_dependencies:
+            self.logger.warning(f"No dependencies found for process {process_definition_code}, returning original order")
             return self.current_process_tasks
         
         # 构建依赖图
         G = nx.DiGraph()
         
         # 添加所有任务节点
-        for _, relation in process_relations.iterrows():
-            pre_task = relation['pre_task_code']
-            post_task = relation['post_task_code']
+        for _, task in self.current_process_tasks.iterrows():
+            task_code = task.get('task_code', task.get('task_definition_code', 0))
+            G.add_node(task_code)
+        
+        # 添加依赖边
+        for dep in self.current_process_dependencies:
+            pre_task = dep['pre_task_code']
+            post_task = dep['post_task_code']
             
-            if pd.notna(pre_task):
-                G.add_node(pre_task)
-            if pd.notna(post_task):
-                G.add_node(post_task)
-            
-            # 添加依赖边
             if pd.notna(pre_task) and pd.notna(post_task):
                 G.add_edge(pre_task, post_task)
         
@@ -1151,15 +1138,15 @@ class HistoricalReplaySimulator:
             
             # 根据排序结果重新排列任务
             if sorted_tasks:
-                # 创建任务ID到索引的映射
-                task_id_to_index = {}
-                for idx, task_id in enumerate(sorted_tasks):
-                    task_id_to_index[task_id] = idx
+                # 创建任务代码到索引的映射
+                task_code_to_index = {}
+                for idx, task_code in enumerate(sorted_tasks):
+                    task_code_to_index[task_code] = idx
                 
                 # 为每个任务添加依赖顺序
                 def get_dependency_order(task_row):
-                    task_code = task_row.get('task_definition_code', 0)
-                    return task_id_to_index.get(task_code, 999999)  # 未知任务放在最后
+                    task_code = task_row.get('task_code', task_row.get('task_definition_code', 0))
+                    return task_code_to_index.get(task_code, 999999)  # 未知任务放在最后
                 
                 # 按依赖顺序排序
                 sorted_df = self.current_process_tasks.copy()
