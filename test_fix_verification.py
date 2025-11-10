@@ -1,118 +1,158 @@
 #!/usr/bin/env python3
 """
-测试随机种子和训练循环的修复
+测试修复后的FE-IDDQN算法性能
 """
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from environment.historical_replay_simulator import HistoricalReplaySimulator
-from data.data_loader import DataLoader
 import logging
+import pandas as pd
+import numpy as np
+from pathlib import Path
 
-# 设置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# 添加项目根目录到Python路径
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
 
-def test_fix_verification():
-    """测试修复是否有效"""
-    logger.info("开始测试修复效果...")
+from data.data_loader import DataLoader
+from experiments.experiment_runner import ExperimentRunner
+from config.config import Config
+
+def setup_logging():
+    """设置日志"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler('test_fix_verification.log')
+        ]
+    )
+
+def test_historical_replay_simulator():
+    """测试历史重放仿真器的修复"""
+    print("=" * 60)
+    print("测试历史重放仿真器修复")
+    print("=" * 60)
     
     # 加载数据
-    data_loader = DataLoader(raw_data_path="data/raw_data")
-    data_dict = data_loader.load_all_data()
-    task_definitions = data_dict['task_definition']
-    process_task_relations = data_dict['process_task_relation']
-    task_instances = data_dict['task_instance']
-    process_instances = data_dict['process_instance']
+    data_loader = DataLoader(Config.RAW_DATA_DIR)
+    data = data_loader.load_all_data()
     
-    # 创建模拟器
-    simulator = HistoricalReplaySimulator(
-        task_definitions=task_definitions,
-        process_task_relations=process_task_relations,
-        task_instances=task_instances,
-        process_instances=process_instances
+    # 创建实验运行器
+    experiment_runner = ExperimentRunner(
+        data=data,
+        features=pd.DataFrame(),  # 空特征DataFrame
+        output_dir=Config.RESULTS_DIR,
+        n_experiments=1  # 只运行1次测试
     )
     
-    logger.info(f"初始化完成，进程数量: {len(simulator.successful_processes)}")
-    
-    # 测试多个episode，检查数据是否不同
-    episode_data = []
-    
-    for episode in range(3):
-        logger.info(f"\n{'='*50}")
-        logger.info(f"测试 Episode {episode + 1}")
-        logger.info(f"{'='*50}")
+    # 测试FE-IDDQN算法
+    print("测试FE-IDDQN算法...")
+    try:
+        results = experiment_runner.run_algorithm("FE_IDDQN", use_historical_replay=True)
+        print(f"FE-IDDQN结果: {results}")
         
-        # 重置环境
-        simulator.reset()
-        logger.info(f"重置后进程数量: {len(simulator.successful_processes)}")
+        # 检查makespan是否合理
+        fe_iddqn_result = results.get('FE_IDDQN', {})
+        makespan = fe_iddqn_result.get('avg_makespan', 0)
+        resource_util = fe_iddqn_result.get('avg_resource_utilization', 0)
         
-        # 记录前5个进程ID
-        first_five_ids = []
-        for i in range(min(5, len(simulator.successful_processes))):
-            process = simulator.successful_processes.iloc[i]
-            first_five_ids.append(process['id'])
-            logger.info(f"  进程 {i}: {process['id']}")
+        print(f"\nFE-IDDQN性能指标:")
+        print(f"  Makespan: {makespan:.2f}")
+        print(f"  资源利用率: {resource_util:.2f}")
         
-        episode_data.append({
-            'episode': episode + 1,
-            'process_count': len(simulator.successful_processes),
-            'first_five_ids': first_five_ids
-        })
+        # 检查是否修复了问题
+        if makespan > 0 and makespan < 50000:  # 合理的makespan范围
+            print("✅ Makespan计算修复成功！")
+        else:
+            print("❌ Makespan仍然异常")
+            
+        if resource_util > 0:
+            print("✅ 资源利用率计算修复成功！")
+        else:
+            print("❌ 资源利用率仍然为0")
+            
+    except Exception as e:
+        print(f"❌ FE-IDDQN测试失败: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # 测试传统算法作为对比
+    print("\n测试传统算法作为对比...")
+    try:
+        fifo_results = experiment_runner.run_algorithm("FIFO", use_historical_replay=True)
+        print(f"FIFO结果: {fifo_results}")
         
-        # 快速测试episode执行
-        step_count = 0
-        while not simulator.is_done() and step_count < 30:
-            step_count += 1
-            try:
-                state, reward, done, info = simulator.step(0)
-                if done:
-                    logger.info(f"  Episode在第{step_count}步完成")
-                    break
-            except Exception as e:
-                logger.error(f"  Step {step_count} 执行失败: {e}")
-                break
+        fifo_result = fifo_results.get('FIFO', {})
+        fifo_makespan = fifo_result.get('avg_makespan', 0)
+        fifo_resource_util = fifo_result.get('avg_resource_utilization', 0)
+        
+        print(f"\nFIFO性能指标:")
+        print(f"  Makespan: {fifo_makespan:.2f}")
+        print(f"  资源利用率: {fifo_resource_util:.2f}")
+        
+    except Exception as e:
+        print(f"❌ FIFO测试失败: {e}")
+        import traceback
+        traceback.print_exc()
+
+def test_dqn_algorithms():
+    """测试DQN算法的修复"""
+    print("\n" + "=" * 60)
+    print("测试DQN算法修复")
+    print("=" * 60)
     
-    # 分析结果
-    logger.info(f"\n{'='*50}")
-    logger.info(f"修复效果分析")
-    logger.info(f"{'='*50}")
+    # 加载数据
+    data_loader = DataLoader(Config.RAW_DATA_DIR)
+    data = data_loader.load_all_data()
     
-    # 检查进程数量是否一致
-    process_counts = [data['process_count'] for data in episode_data]
-    if len(set(process_counts)) == 1:
-        logger.info(f"✅ 所有Episode的进程数量一致: {process_counts[0]}")
-    else:
-        logger.warning(f"⚠️  Episode进程数量不一致: {process_counts}")
+    # 创建实验运行器
+    experiment_runner = ExperimentRunner(
+        data=data,
+        features=pd.DataFrame(),
+        output_dir=Config.RESULTS_DIR,
+        n_experiments=1
+    )
     
-    # 检查进程ID是否不同
-    all_ids = []
-    for data in episode_data:
-        all_ids.extend(data['first_five_ids'])
+    # 测试DQN算法
+    algorithms_to_test = ["DQN", "DDQN"]
     
-    unique_ids = set(all_ids)
-    total_ids = len(all_ids)
-    
-    logger.info(f"总进程ID数量: {total_ids}")
-    logger.info(f"唯一进程ID数量: {len(unique_ids)}")
-    logger.info(f"重复率: {(1 - len(unique_ids) / total_ids) * 100:.1f}%")
-    
-    if len(unique_ids) == total_ids:
-        logger.info(f"✅ 所有Episode的进程ID都不同，修复成功！")
-    elif len(unique_ids) > total_ids * 0.8:
-        logger.info(f"✅ 大部分Episode的进程ID不同，修复基本成功！")
-    else:
-        logger.warning(f"⚠️  很多Episode的进程ID重复，修复可能不完整")
-    
-    # 检查episode计数器
-    if hasattr(simulator, 'episode_count'):
-        logger.info(f"✅ Episode计数器正常工作，当前值: {simulator.episode_count}")
-    else:
-        logger.error(f"❌ Episode计数器未找到")
-    
-    logger.info(f"\n测试完成！")
+    for algo in algorithms_to_test:
+        print(f"\n测试{algo}算法...")
+        try:
+            results = experiment_runner.run_algorithm(algo, use_historical_replay=True)
+            print(f"{algo}结果: {results}")
+            
+            algo_result = results.get(algo, {})
+            makespan = algo_result.get('avg_makespan', 0)
+            resource_util = algo_result.get('avg_resource_utilization', 0)
+            
+            print(f"\n{algo}性能指标:")
+            print(f"  Makespan: {makespan:.2f}")
+            print(f"  资源利用率: {resource_util:.2f}")
+            
+            if makespan > 0:
+                print(f"✅ {algo} Makespan修复成功！")
+            else:
+                print(f"❌ {algo} Makespan仍然为0")
+                
+        except Exception as e:
+            print(f"❌ {algo}测试失败: {e}")
+            import traceback
+            traceback.print_exc()
 
 if __name__ == "__main__":
-    test_fix_verification()
+    setup_logging()
+    
+    print("开始测试修复效果...")
+    
+    # 测试历史重放仿真器修复
+    test_historical_replay_simulator()
+    
+    # 测试DQN算法修复
+    test_dqn_algorithms()
+    
+    print("\n" + "=" * 60)
+    print("测试完成！")
+    print("=" * 60)

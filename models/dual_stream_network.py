@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from typing import Tuple, List
-from config.hyperparameters import Hyperparameters
+# 移除不需要的导入
 
 class AttentionModule(nn.Module):
     """注意力机制模块"""
@@ -27,10 +27,10 @@ class AttentionModule(nn.Module):
         
         # 前馈网络
         self.feed_forward = nn.Sequential(
-            nn.Linear(input_dim, attention_dim),
+            nn.Linear(input_dim, attention_dim // 2),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(attention_dim, input_dim)
+            nn.Linear(attention_dim // 2, input_dim)
         )
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -313,6 +313,10 @@ class DualStreamNetwork(nn.Module):
         Returns:
             网络输出 [batch_size, output_dim]
         """
+        # 添加输入Dropout进行正则化
+        task_features = F.dropout(task_features, p=0.2, training=self.training)
+        resource_features = F.dropout(resource_features, p=0.2, training=self.training)
+        
         # 任务流处理
         task_output = self.task_stream(task_features)
         

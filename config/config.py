@@ -44,7 +44,7 @@ class Config:
     
     # 数据处理配置
     MAX_PROCESSES_PER_EPISODE = int(os.getenv('MAX_PROCESSES_PER_EPISODE', 50))   # 每个episode最大进程数
-    MAX_TASKS_PER_EPISODE = int(os.getenv('MAX_TASKS_PER_EPISODE', 20000))        # 每个episode最大任务数
+    MAX_TASKS_PER_EPISODE = int(os.getenv('MAX_TASKS_PER_EPISODE', 200))        # 每个episode最大任务数
     DATA_SAMPLING_RATIO = float(os.getenv('DATA_SAMPLING_RATIO', 0.8))            # 数据采样比例 (0.0-1.0)
     
     # 随机种子
