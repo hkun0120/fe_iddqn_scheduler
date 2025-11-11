@@ -14,7 +14,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from config.config import Config
-from data.data_loader import DataLoader
+from data.mysql_data_loader import MySQLDataLoader
 from experiments.experiment_runner import ExperimentRunner
 from experiments.fair_comparison_runner import FairComparisonRunner
 from utils.logger import setup_logger
@@ -32,8 +32,14 @@ def main():
     
     try:
         # 1. 加载数据
-        logger.info("正在加载数据...")
-        data_loader = DataLoader("data/raw_data")
+        logger.info("正在从MySQL数据库加载数据...")
+        data_loader = MySQLDataLoader(
+            host='localhost',
+            user='root',
+            password='',
+            database='whalesb',
+            port=3306
+        )
         data = data_loader.load_all_data()
         
         if not data:
