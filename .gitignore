@@ -46,6 +46,10 @@ nohup.out
 data/db_config.json
 data/db_config_remote.json
 
+# CSV data files (real data should not be committed)
+*.csv
+fe_iddqn_training_system/data/*.csv
+
 # Large model files (optional - uncomment if you don't want to track models)
 # fe_iddqn_training_system/models/*.pkl
 
