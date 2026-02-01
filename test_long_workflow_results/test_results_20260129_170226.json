@@ -1,0 +1,311 @@
+{
+  "test_time": "20260129_170226",
+  "workflows_tested": 3,
+  "results": [
+    {
+      "algorithm": "FE-IDDQN",
+      "process_id": 291632,
+      "makespan": 37092.0,
+      "resource_utilization": 0.23480534886228838,
+      "total_reward": -1.4309000000000003,
+      "steps": 11,
+      "execution_time": 0.15713167190551758,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "FIFO",
+      "process_id": 291632,
+      "makespan": 43547.0,
+      "resource_utilization": 0.2,
+      "total_reward": -7.732,
+      "steps": 11,
+      "execution_time": 0.0744471549987793,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "SJF",
+      "process_id": 291632,
+      "makespan": 43547.0,
+      "resource_utilization": 0.2,
+      "total_reward": -7.732,
+      "steps": 11,
+      "execution_time": 0.07769393920898438,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "RoundRobin",
+      "process_id": 291632,
+      "makespan": 36272.0,
+      "resource_utilization": 0.24011358623731804,
+      "total_reward": 2.7084,
+      "steps": 11,
+      "execution_time": 0.08291792869567871,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "LoadBalance",
+      "process_id": 291632,
+      "makespan": 43547.0,
+      "resource_utilization": 0.2,
+      "total_reward": -7.732,
+      "steps": 11,
+      "execution_time": 0.08251714706420898,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "Random",
+      "process_id": 291632,
+      "makespan": 37057.0,
+      "resource_utilization": 0.23502712038211404,
+      "total_reward": 1.7248999999999999,
+      "steps": 11,
+      "execution_time": 0.08258509635925293,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "FE-IDDQN",
+      "process_id": 293147,
+      "makespan": 0.0,
+      "resource_utilization": 0.0,
+      "total_reward": 0,
+      "steps": 0,
+      "execution_time": 4.0531158447265625e-06,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "FIFO",
+      "process_id": 293147,
+      "makespan": 0.0,
+      "resource_utilization": 0.0,
+      "total_reward": 0,
+      "steps": 0,
+      "execution_time": 5.0067901611328125e-06,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "SJF",
+      "process_id": 293147,
+      "makespan": 0.0,
+      "resource_utilization": 0.0,
+      "total_reward": 0,
+      "steps": 0,
+      "execution_time": 6.198883056640625e-06,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "RoundRobin",
+      "process_id": 293147,
+      "makespan": 0.0,
+      "resource_utilization": 0.0,
+      "total_reward": 0,
+      "steps": 0,
+      "execution_time": 4.0531158447265625e-06,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "LoadBalance",
+      "process_id": 293147,
+      "makespan": 0.0,
+      "resource_utilization": 0.0,
+      "total_reward": 0,
+      "steps": 0,
+      "execution_time": 3.314018249511719e-05,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "Random",
+      "process_id": 293147,
+      "makespan": 0.0,
+      "resource_utilization": 0.0,
+      "total_reward": 0,
+      "steps": 0,
+      "execution_time": 5.0067901611328125e-06,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "FE-IDDQN",
+      "process_id": 291298,
+      "makespan": 7169.0,
+      "resource_utilization": 0.5293904310224578,
+      "total_reward": 53.6961,
+      "steps": 62,
+      "execution_time": 1.2934510707855225,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "FIFO",
+      "process_id": 291298,
+      "makespan": 18976.0,
+      "resource_utilization": 0.2,
+      "total_reward": -42.14800000000001,
+      "steps": 62,
+      "execution_time": 0.676069974899292,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "SJF",
+      "process_id": 291298,
+      "makespan": 18976.0,
+      "resource_utilization": 0.2,
+      "total_reward": -42.14800000000001,
+      "steps": 62,
+      "execution_time": 0.687471866607666,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "RoundRobin",
+      "process_id": 291298,
+      "makespan": 4633.0,
+      "resource_utilization": 0.819166846535722,
+      "total_reward": 55.5254,
+      "steps": 62,
+      "execution_time": 0.8124158382415771,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "LoadBalance",
+      "process_id": 291298,
+      "makespan": 18976.0,
+      "resource_utilization": 0.2,
+      "total_reward": -42.14800000000001,
+      "steps": 62,
+      "execution_time": 0.588212251663208,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "algorithm": "Random",
+      "process_id": 291298,
+      "makespan": 6487.0,
+      "resource_utilization": 0.5850470171111454,
+      "total_reward": 54.9564,
+      "steps": 62,
+      "execution_time": 0.7533712387084961,
+      "dependency_valid": true,
+      "violation_count": 0
+    }
+  ],
+  "comparison": [
+    {
+      "workflow_id": 291632,
+      "algorithms": {
+        "RoundRobin": {
+          "makespan": 36272.0,
+          "resource_utilization": 0.24011358623731804,
+          "dependency_valid": true
+        },
+        "Random": {
+          "makespan": 37057.0,
+          "resource_utilization": 0.23502712038211404,
+          "dependency_valid": true
+        },
+        "FE-IDDQN": {
+          "makespan": 37092.0,
+          "resource_utilization": 0.23480534886228838,
+          "dependency_valid": true
+        },
+        "FIFO": {
+          "makespan": 43547.0,
+          "resource_utilization": 0.2,
+          "dependency_valid": true
+        },
+        "SJF": {
+          "makespan": 43547.0,
+          "resource_utilization": 0.2,
+          "dependency_valid": true
+        },
+        "LoadBalance": {
+          "makespan": 43547.0,
+          "resource_utilization": 0.2,
+          "dependency_valid": true
+        }
+      }
+    },
+    {
+      "workflow_id": 293147,
+      "algorithms": {
+        "FE-IDDQN": {
+          "makespan": 0.0,
+          "resource_utilization": 0.0,
+          "dependency_valid": true
+        },
+        "FIFO": {
+          "makespan": 0.0,
+          "resource_utilization": 0.0,
+          "dependency_valid": true
+        },
+        "SJF": {
+          "makespan": 0.0,
+          "resource_utilization": 0.0,
+          "dependency_valid": true
+        },
+        "RoundRobin": {
+          "makespan": 0.0,
+          "resource_utilization": 0.0,
+          "dependency_valid": true
+        },
+        "LoadBalance": {
+          "makespan": 0.0,
+          "resource_utilization": 0.0,
+          "dependency_valid": true
+        },
+        "Random": {
+          "makespan": 0.0,
+          "resource_utilization": 0.0,
+          "dependency_valid": true
+        }
+      }
+    },
+    {
+      "workflow_id": 291298,
+      "algorithms": {
+        "RoundRobin": {
+          "makespan": 4633.0,
+          "resource_utilization": 0.819166846535722,
+          "dependency_valid": true
+        },
+        "Random": {
+          "makespan": 6487.0,
+          "resource_utilization": 0.5850470171111454,
+          "dependency_valid": true
+        },
+        "FE-IDDQN": {
+          "makespan": 7169.0,
+          "resource_utilization": 0.5293904310224578,
+          "dependency_valid": true
+        },
+        "FIFO": {
+          "makespan": 18976.0,
+          "resource_utilization": 0.2,
+          "dependency_valid": true
+        },
+        "SJF": {
+          "makespan": 18976.0,
+          "resource_utilization": 0.2,
+          "dependency_valid": true
+        },
+        "LoadBalance": {
+          "makespan": 18976.0,
+          "resource_utilization": 0.2,
+          "dependency_valid": true
+        }
+      }
+    }
+  ]
+}

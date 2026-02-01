@@ -8,6 +8,12 @@ from datetime import datetime, timedelta
 
 class HistoricalReplaySimulator:
     """基于历史数据重放的仿真环境"""
+
+    # RL状态/动作空间的固定上限（需与get_state的padding保持一致）
+    MAX_TASKS: int = 5
+    MAX_RESOURCES: int = 5
+    CPU_OVERLOAD_FACTOR: float = 1.2
+    MEM_OVERLOAD_FACTOR: float = 1.1
     
     def __init__(self, process_instances: pd.DataFrame, task_instances: pd.DataFrame, 
                  task_definitions: pd.DataFrame, process_task_relations: pd.DataFrame):
@@ -76,7 +82,16 @@ class HistoricalReplaySimulator:
         
         # 修复：增加处理的进程数量，允许处理更多数据
         # 可以通过环境变量或配置来调整
-        from config.config import Config
+        try:
+            from config.config import Config
+        except ImportError:
+            # 如果config.config不存在，使用默认配置
+            class Config:
+                def __init__(self):
+                    self.MAX_PROCESSES_PER_EPISODE = 50
+                    self.MAX_TASKS_PER_EPISODE = 200
+                    self.RANDOM_SEED = 42
+            Config = Config()
         max_processes_per_episode = Config.MAX_PROCESSES_PER_EPISODE
         
         if len(self.successful_processes) > max_processes_per_episode:
@@ -157,24 +172,102 @@ class HistoricalReplaySimulator:
         return True
     
     def _get_process_dependencies(self, process_definition_code):
-        """获取指定流程的依赖关系"""
-        # 直接从关系表获取依赖关系，不需要复杂的转换
-        dependencies = self.process_task_relations[
-            self.process_task_relations['process_definition_code'] == process_definition_code
-        ]
+        """
+        获取指定流程的依赖关系（改进版）
         
-        # 转换为简单的依赖列表
+        尝试多种方式获取依赖：
+        1. 使用process_definition_code
+        2. 使用process_definition_id (fallback)
+        3. 从任务名称推断（last resort）
+        """
         dependency_list = []
-        for _, relation in dependencies.iterrows():
-            dependency_list.append({
-                'pre_task_code': relation['pre_task_code'],
-                'post_task_code': relation['post_task_code']
-            })
         
-        self.logger.info(f"流程 {process_definition_code} 的依赖关系数量: {len(dependency_list)}")
+        # 方式1: 使用process_definition_code
+        if pd.notna(process_definition_code) and process_definition_code is not None:
+            dependencies = self.process_task_relations[
+                self.process_task_relations['process_definition_code'] == process_definition_code
+            ]
+            
+            for _, relation in dependencies.iterrows():
+                pre_task = relation.get('pre_task_code')
+                post_task = relation.get('post_task_code')
+                
+                if pd.notna(pre_task) and pd.notna(post_task) and pre_task != post_task:
+                    dependency_list.append({
+                        'pre_task_code': pre_task,
+                        'post_task_code': post_task
+                    })
+            
+            if len(dependency_list) > 0:
+                self.logger.info(f"流程 {process_definition_code} 的依赖关系数量: {len(dependency_list)} (通过code)")
+                return dependency_list
+        
+        # 方式2: 使用process_definition_id (fallback)
+        if hasattr(self, 'current_process_instance') and len(self.successful_processes) > self.current_process_idx:
+            current_process = self.successful_processes.iloc[self.current_process_idx]
+            process_def_id = current_process.get('process_definition_id')
+            
+            if pd.notna(process_def_id):
+                # 尝试使用ID查找
+                if 'process_definition_id' in self.process_task_relations.columns:
+                    dependencies = self.process_task_relations[
+                        self.process_task_relations['process_definition_id'] == process_def_id
+                    ]
+                    
+                    for _, relation in dependencies.iterrows():
+                        pre_task = relation.get('pre_task_code')
+                        post_task = relation.get('post_task_code')
+                        
+                        if pd.notna(pre_task) and pd.notna(post_task) and pre_task != post_task:
+                            dependency_list.append({
+                                'pre_task_code': pre_task,
+                                'post_task_code': post_task
+                            })
+                    
+                    if len(dependency_list) > 0:
+                        self.logger.info(f"流程 ID={process_def_id} 的依赖关系数量: {len(dependency_list)} (通过ID)")
+                        return dependency_list
+        
+        # 方式3: 从任务名称推断基本依赖
+        if len(dependency_list) == 0:
+            self.logger.warning(f"流程 {process_definition_code} 无法从数据库获取依赖，尝试推断...")
+            
+            # 基于任务名称的启发式依赖推断
+            if hasattr(self, 'current_process_tasks') and len(self.current_process_tasks) > 0:
+                # 简单推断：名称包含"开始"的任务应该在其他任务之前
+                # 名称包含"结束"、"收尾"的应该在最后
+                start_tasks = []
+                end_tasks = []
+                middle_tasks = []
+                
+                for _, task in self.current_process_tasks.iterrows():
+                    task_code = task.get('task_code', task.get('id'))
+                    task_name = task.get('name', '')
+                    
+                    if '开始' in task_name or 'start' in task_name.lower():
+                        start_tasks.append(task_code)
+                    elif '结束' in task_name or '收尾' in task_name or 'end' in task_name.lower():
+                        end_tasks.append(task_code)
+                    else:
+                        middle_tasks.append(task_code)
+                
+                # 创建推断的依赖：开始任务 → 中间任务 → 结束任务
+                for start in start_tasks:
+                    for middle in middle_tasks[:3]:  # 只连接前几个，避免过度约束
+                        if start != middle:
+                            dependency_list.append({
+                                'pre_task_code': start,
+                                'post_task_code': middle
+                            })
+                
+                if len(dependency_list) > 0:
+                    self.logger.info(f"推断出 {len(dependency_list)} 条基本依赖关系（基于任务名称）")
+        
+        if len(dependency_list) == 0:
+            self.logger.warning(f"流程 {process_definition_code} 没有找到任何依赖关系")
+        
         return dependency_list
-        for dep in filtered_dependencies:
-            self.logger.info(f"  依赖: {dep['pre_task']} -> {dep['post_task']}")
+
 
     def _update_resources_for_new_process(self):
         """为新进程更新资源状态，保留累积的执行时间"""
@@ -300,9 +393,10 @@ class HistoricalReplaySimulator:
         # 这里先初始化为空，后面会重新构建
         task_features = []
         
-        # 资源特征
+        # 资源特征（仅保留RL动作空间可见的前MAX_RESOURCES个资源，确保“看到什么就能选什么”）
         resource_features = []
-        for host, resource in self.available_resources.items():
+        for host in self._get_action_hosts():
+            resource = self.available_resources[host]
             features = [
                 resource['cpu_capacity'],
                 resource['memory_capacity'],
@@ -315,8 +409,8 @@ class HistoricalReplaySimulator:
             resource_features.append(features)
         
         # 分批处理参数：每次处理的任务批次大小
-        MAX_TASKS = 5  # 每批次处理的任务数量
-        MAX_RESOURCES = 5  # 最大资源数量（修复：从3改为5）
+        MAX_TASKS = self.MAX_TASKS
+        MAX_RESOURCES = self.MAX_RESOURCES
         
         # 任务特征标准化 - 现在分批处理已经确保了固定长度
         # 每个任务特征都是16个元素，不需要额外处理
@@ -388,6 +482,57 @@ class HistoricalReplaySimulator:
             resource_array = resource_array.reshape(1, resource_array.shape[0], resource_array.shape[1])
         
         return task_array, resource_array
+
+    def get_graph_adj(self) -> np.ndarray:
+        """获取当前任务批次的DAG邻接矩阵（用于Graph Transformer）。
+
+        Returns:
+            adj: [1, MAX_TASKS, MAX_TASKS] float32, 1表示存在依赖边(i->j)，含自环。
+        """
+        max_tasks = self.MAX_TASKS
+
+        # 收集当前批次任务的code（与依赖表中的pre_task_code/post_task_code一致）
+        codes = []
+        for i in range(max_tasks):
+            task_idx = self.current_task_idx + i
+            if task_idx < len(getattr(self, 'current_process_tasks', [])):
+                task = self.current_process_tasks.iloc[task_idx]
+                code = task.get('task_code', task.get('task_definition_code', 0))
+                try:
+                    codes.append(int(code) if pd.notna(code) else 0)
+                except Exception:
+                    codes.append(0)
+            else:
+                codes.append(0)
+
+        code_to_pos = {}
+        for idx, c in enumerate(codes):
+            if c in (0, None):
+                continue
+            if c not in code_to_pos:
+                code_to_pos[c] = idx
+        adj = np.zeros((max_tasks, max_tasks), dtype=np.float32)
+
+        # 自环
+        for i in range(max_tasks):
+            adj[i, i] = 1.0
+
+        # 依赖边
+        if hasattr(self, 'current_process_dependencies') and self.current_process_dependencies:
+            for dep in self.current_process_dependencies:
+                pre = dep.get('pre_task_code')
+                post = dep.get('post_task_code')
+                try:
+                    pre = int(pre) if pd.notna(pre) else 0
+                    post = int(post) if pd.notna(post) else 0
+                except Exception:
+                    continue
+                if pre in code_to_pos and post in code_to_pos:
+                    i = code_to_pos[pre]
+                    j = code_to_pos[post]
+                    adj[i, j] = 1.0
+
+        return adj.reshape(1, max_tasks, max_tasks)
     
     def _extract_task_features(self, task: pd.Series) -> List[float]:
         """提取任务特征，包含更多细粒度信息"""
@@ -773,12 +918,21 @@ class HistoricalReplaySimulator:
         current_task = self.current_process_tasks.iloc[self.current_task_idx]
         
         # 获取可用的资源（主机）
-        available_hosts = list(self.available_resources.keys())
+        available_hosts = self._get_action_hosts()
         if not available_hosts:
             return self.get_state(), -1, True, {}
+
+        # 动作越界：直接惩罚并返回mask，避免索引隐式取模导致训练信号混乱
+        valid_action_mask = self.get_valid_action_mask(current_task)
+        if action < 0 or action >= len(available_hosts):
+            return self.get_state(), -0.2, False, {
+                'task_scheduled': False,
+                'reason': 'invalid_action',
+                'valid_action_mask': valid_action_mask
+            }
         
         # 选择资源
-        selected_host = available_hosts[action % len(available_hosts)]
+        selected_host = available_hosts[action]
         resource = self.available_resources[selected_host]
         
         # 检查资源是否满足需求
@@ -786,17 +940,15 @@ class HistoricalReplaySimulator:
         memory_req = self._estimate_task_memory_requirement(current_task)
         
         # 改进资源检查：允许部分资源重叠，模拟真实环境
-        if (resource['cpu_used'] + cpu_req <= resource['cpu_capacity'] * 1.2 and  # 允许20%的CPU超载
-            resource['memory_used'] + memory_req <= resource['memory_capacity'] * 1.1):  # 允许10%的内存超载
+        if (resource['cpu_used'] + cpu_req <= resource['cpu_capacity'] * self.CPU_OVERLOAD_FACTOR and  # 允许CPU超载
+            resource['memory_used'] + memory_req <= resource['memory_capacity'] * self.MEM_OVERLOAD_FACTOR):  # 允许内存超载
+
+            makespan_before = self.get_makespan()
             
             # 计算奖励
             reward = self._calculate_reward(current_task, selected_host)
             
-            # 更新资源状态
-            resource['cpu_used'] += cpu_req
-            resource['memory_used'] += memory_req
-            
-            # 计算任务执行时间并更新时间
+            # 计算任务执行时间
             if pd.notna(current_task.get('start_time')) and pd.notna(current_task.get('end_time')):
                 start_time = pd.to_datetime(current_task['start_time'])
                 end_time = pd.to_datetime(current_task['end_time'])
@@ -814,17 +966,14 @@ class HistoricalReplaySimulator:
                     'HTTP': 5.0
                 }.get(task_type, 10.0)
             
-            # 关键改进：基于真实时间的调度
-            if resource['cpu_used'] <= cpu_req and resource['memory_used'] <= memory_req:
-                # 资源完全空闲，任务可以立即开始
-                resource['execution_time'] += task_duration
-                resource['current_task_end_time'] = resource['execution_time']
-            else:
-                # 资源部分占用，任务需要等待
-                # 等待时间 = 当前任务结束时间 - 当前时间
-                wait_time = max(0, resource['current_task_end_time'] - resource['execution_time'])
-                resource['execution_time'] += wait_time + task_duration
-                resource['current_task_end_time'] = resource['execution_time']
+            # 基于每台机器的独立时间线进行调度（单机串行、跨机并行）
+            start_time = resource.get('execution_time', 0.0)
+            end_time = start_time + task_duration
+            resource['execution_time'] = end_time
+            resource['current_task_end_time'] = end_time
+            
+            # 更新当前时间（用于日志/可视化；不作为全局同步时钟）
+            self.current_time = max(self.current_time, resource['execution_time'])
             
             # 记录调度历史
             self.task_schedule_history.append({
@@ -833,13 +982,9 @@ class HistoricalReplaySimulator:
                 'host': selected_host,
                 'action': action,
                 'reward': reward,
-                'timestamp': self.current_time,
+                'timestamp': start_time,
                 'duration': task_duration
             })
-            
-            # 任务完成后立即释放资源（模拟任务执行完成）
-            resource['cpu_used'] = max(0, resource['cpu_used'] - cpu_req)
-            resource['memory_used'] = max(0, resource['memory_used'] - memory_req)
             
             # 记录任务完成
             self.completed_tasks.add(current_task['id'])
@@ -847,43 +992,282 @@ class HistoricalReplaySimulator:
             # 移动到下一个任务
             self.current_task_idx += 1
             
+            # 检查当前进程是否完成
+            is_current_process_done = (self.current_task_idx >= len(self.current_process_tasks))
+            
+            # 如果当前进程完成，添加全局makespan奖励/惩罚
+            if is_current_process_done:
+                final_makespan = self.get_makespan()
+                
+                # 计算理想makespan（完美并行情况）
+                total_duration = sum(self.task_schedule_history[i]['duration'] 
+                                    for i in range(len(self.task_schedule_history)))
+                ideal_makespan = total_duration / len(self.available_resources)
+                
+                # 计算并行效率
+                if final_makespan > 0 and ideal_makespan > 0:
+                    parallel_efficiency = ideal_makespan / final_makespan
+                    # parallel_efficiency = 1.0: 完美并行
+                    # parallel_efficiency = 0.5: 50%并行度
+                    # parallel_efficiency < 0.2: 几乎串行
+                    
+                    # 并行效率奖励（缩放到小范围，避免奖励爆炸导致训练不稳定）
+                    if parallel_efficiency >= 0.7:
+                        episode_reward = 2.0
+                    elif parallel_efficiency >= 0.5:
+                        episode_reward = 1.0
+                    elif parallel_efficiency >= 0.3:
+                        episode_reward = 0.3
+                    else:
+                        episode_reward = -1.0
+                    
+                    reward += episode_reward
+                    
+                    # 记录用于debugging
+                    if not hasattr(self, '_episode_rewards'):
+                        self._episode_rewards = []
+                    self._episode_rewards.append({
+                        'final_makespan': final_makespan,
+                        'ideal_makespan': ideal_makespan,
+                        'parallel_efficiency': parallel_efficiency,
+                        'episode_reward': episode_reward
+                    })
+
+            # 形状化：惩罚makespan的增量，让学习信号更密集
+            makespan_after = self.get_makespan()
+            reward += - (makespan_after - makespan_before) / 100.0
+
+            # 归一化：限制奖励量级，提升训练稳定性
+            reward = float(np.clip(reward, -10.0, 10.0) / 10.0)
+            
             return self.get_state(), reward, False, {
                 'task_scheduled': True,
                 'host': selected_host,
-                'task_name': current_task['name']
+                'task_name': current_task['name'],
+                'process_done': is_current_process_done,
+                'valid_action_mask': valid_action_mask
             }
         else:
             # 资源不足，给予负奖励
-            return self.get_state(), -1, False, {
+            return self.get_state(), -0.2, False, {
                 'task_scheduled': False,
-                'reason': 'insufficient_resources'
+                'reason': 'insufficient_resources',
+                'valid_action_mask': valid_action_mask
             }
+
+    def _get_action_hosts(self) -> List[str]:
+        """获取RL动作空间对应的主机列表（固定上限，确保与state对齐）"""
+        if not self.available_resources:
+            return []
+        return list(self.available_resources.keys())[: self.MAX_RESOURCES]
+
+    def get_valid_action_mask(self, task: Optional[pd.Series] = None) -> List[int]:
+        """返回当前任务下的可行动作mask（1=可选，0=不可选）。"""
+        hosts = self._get_action_hosts()
+        if not hosts:
+            return []
+
+        if task is None:
+            # 没有任务信息时，默认全部可选
+            return [1] * len(hosts)
+
+        cpu_req = self._estimate_task_cpu_requirement(task)
+        mem_req = self._estimate_task_memory_requirement(task)
+        mask: List[int] = []
+        for host in hosts:
+            res = self.available_resources[host]
+            ok = (
+                res['cpu_used'] + cpu_req <= res['cpu_capacity'] * self.CPU_OVERLOAD_FACTOR
+                and res['memory_used'] + mem_req <= res['memory_capacity'] * self.MEM_OVERLOAD_FACTOR
+            )
+            mask.append(1 if ok else 0)
+        return mask
     
     def _calculate_reward(self, task: pd.Series, host: str) -> float:
-        """计算调度奖励"""
-        reward = 0.0
+        """
+        计算调度奖励 - 基于学术论文设计
         
-        # 基础奖励：成功调度
-        reward += 1.0
+        总奖励公式：R_t = w1*R_time + w2*R_resource + w3*R_load
+        其中：
+        - w1=0.6 (时间优化权重)
+        - w2=0.3 (资源利用率权重)  
+        - w3=0.1 (负载均衡权重)
         
-        # 资源利用率奖励
+        R_time: 执行时间奖励（包含关键路径、等待时间）
+        R_resource: 资源利用率奖励（CPU和内存的分段奖励）
+        R_load: 负载均衡奖励（标准差惩罚）
+        """
+        
+        # 获取任务duration
+        task_duration = self._estimate_task_duration(task)
         resource = self.available_resources[host]
-        cpu_utilization = resource['cpu_used'] / resource['cpu_capacity']
-        memory_utilization = resource['memory_used'] / resource['memory_capacity']
         
-        # 适中的资源利用率获得更高奖励
-        if 0.3 <= cpu_utilization <= 0.8 and 0.3 <= memory_utilization <= 0.8:
+        # ==================== R_time: 时间相关奖励 (权重0.6) ====================
+        R_time = 0.0
+        
+        # 1.1 执行时间奖励：短任务优先完成获得更高奖励
+        if task_duration > 0:
+            # 归一化任务时长（假设最长任务1000秒）
+            normalized_duration = min(task_duration / 1000.0, 1.0)
+            # 短任务获得正奖励，长任务获得负奖励
+            R_time += (1.0 - normalized_duration) * 2.0
+        
+        # 1.2 等待时间惩罚：如果资源忙，需要等待
+        resource_ready_time = resource.get('current_task_end_time', 0)
+        current_time = resource.get('execution_time', 0)
+        wait_time = max(0, resource_ready_time - current_time)
+        
+        if wait_time > 0:
+            # 归一化等待时间
+            normalized_wait = min(wait_time / 100.0, 1.0)
+            R_time -= normalized_wait * 1.5  # 等待时间惩罚
+        
+        # 1.3 关键路径奖励：优先调度关键路径上的任务
+        # 这里简化为：有依赖的任务优先级更高
+        num_dependencies = 0
+        if hasattr(self, 'current_process_dependencies'):
+            task_code = task.get('task_code', task.get('id'))
+            for dep in self.current_process_dependencies:
+                if dep.get('post_task_code') == task_code:
+                    num_dependencies += 1
+        
+        if num_dependencies > 0:
+            R_time += min(num_dependencies * 0.3, 1.0)  # 关键任务奖励
+        
+        # ==================== R_resource: 资源利用率奖励 (权重0.3) ====================
+        R_resource = 0.0
+        
+        # 2.1 CPU利用率分段奖励
+        cpu_util = resource['cpu_used'] / resource['cpu_capacity'] if resource['cpu_capacity'] > 0 else 0
+        
+        if cpu_util >= 0.7:  # 高利用率 [0.7, 1.0]
+            R_cpu = 3.0
+        elif cpu_util >= 0.5:  # 中等利用率 [0.5, 0.7)
+            R_cpu = 2.0
+        elif cpu_util >= 0.3:  # 低利用率 [0.3, 0.5)
+            R_cpu = 1.0
+        else:  # 极低利用率 [0, 0.3)
+            R_cpu = 0.0
+        
+        # 2.2 内存利用率分段奖励
+        memory_util = resource['memory_used'] / resource['memory_capacity'] if resource['memory_capacity'] > 0 else 0
+        
+        if memory_util >= 0.7:
+            R_memory = 3.0
+        elif memory_util >= 0.5:
+            R_memory = 2.0
+        elif memory_util >= 0.3:
+            R_memory = 1.0
+        else:
+            R_memory = 0.0
+        
+        # 资源综合奖励
+        R_resource = (R_cpu + R_memory) / 2.0
+        
+        # 2.3 资源过载惩罚
+        if cpu_util > 1.0 or memory_util > 1.0:
+            R_resource -= max(cpu_util, memory_util) - 1.0  # 超载惩罚
+        
+        # ==================== R_load: 负载均衡奖励 (权重0.3) ====================
+        R_load = 0.0
+        
+        # 3.1 计算所有资源的CPU利用率（基于任务分配后的状态）
+        cpu_utils = []
+        for res_host, res in self.available_resources.items():
+            if res['cpu_capacity'] > 0:
+                cpu_utils.append(res['cpu_used'] / res['cpu_capacity'])
+        
+        # 3.2 计算所有资源的内存利用率
+        mem_utils = []
+        for res_host, res in self.available_resources.items():
+            if res['memory_capacity'] > 0:
+                mem_utils.append(res['memory_used'] / res['memory_capacity'])
+        
+        # 3.3 计算使用中的资源数量
+        cpu_active_resources = sum(1 for util in cpu_utils if util > 0.01)  # 利用率>1%认为在使用
+        mem_active_resources = sum(1 for util in mem_utils if util > 0.01)
+        total_resources = len(cpu_utils)
+        
+        # 3.4 计算平均利用率
+        cpu_avg_util = np.mean(cpu_utils)
+        mem_avg_util = np.mean(mem_utils)
+        
+        # 3.5 资源多样性奖励：使用更多资源获得更高奖励
+        cpu_diversity_ratio = cpu_active_resources / total_resources if total_resources > 0 else 0
+        mem_diversity_ratio = mem_active_resources / total_resources if total_resources > 0 else 0
+        
+        cpu_diversity_reward = cpu_diversity_ratio * 3.0  # 最高3.0
+        mem_diversity_reward = mem_diversity_ratio * 3.0
+        
+        # 3.6 负载均衡奖励：只有在有负载的情况下才计算
+        if cpu_avg_util > 0.01 and len(cpu_utils) > 1:
+            cpu_std = np.std(cpu_utils)
+            cpu_balance_reward = max(0, 2.0 - cpu_std * 5.0)
+        else:
+            cpu_balance_reward = 0.0  # 无负载时不给均衡奖励
+        
+        if mem_avg_util > 0.01 and len(mem_utils) > 1:
+            mem_std = np.std(mem_utils)
+            mem_balance_reward = max(0, 2.0 - mem_std * 5.0)
+        else:
+            mem_balance_reward = 0.0
+        
+        # 3.7 资源闲置惩罚：如果所有资源都闲置，给予惩罚
+        if cpu_avg_util < 0.01:
+            cpu_idle_penalty = -2.0  # 闲置惩罚
+        else:
+            cpu_idle_penalty = 0.0
+        
+        if mem_avg_util < 0.01:
+            mem_idle_penalty = -2.0
+        else:
+            mem_idle_penalty = 0.0
+        
+        # 3.8 综合计算
+        cpu_reward = cpu_diversity_reward + cpu_balance_reward + cpu_idle_penalty
+        mem_reward = mem_diversity_reward + mem_balance_reward + mem_idle_penalty
+        
+        # 综合CPU和内存的负载均衡
+        R_load = (cpu_reward + mem_reward) / 2.0
+        
+        # ==================== 加权求和 ====================
+        # 【改进】调整权重，增加负载均衡（并行度）的权重
+        w1, w2, w3 = 0.5, 0.2, 0.3  # 时间0.6->0.5, 资源0.3->0.2, 负载0.1->0.3
+        reward = w1 * R_time + w2 * R_resource + w3 * R_load
+        
+        # ==================== 额外奖励/惩罚 ====================
+        # 任务失败惩罚（如果任务状态不是成功）
+        task_state = task.get('state', 7)
+        if task_state != 7:  # 7表示成功
+            reward -= 5.0
+        
+        # 任务优先级加成
+        priority = task.get('task_instance_priority', 0)
+        if priority > 2:  # 高优先级任务
             reward += 0.5
         
-        # 任务类型匹配奖励
-        task_type = task.get('task_type', 'SHELL')
-        if task_type in ['SPARK', 'FLINK'] and 'spark' in host.lower() or 'flink' in host.lower():
-            reward += 0.3
-        
-        # 优先级奖励
-        priority = task.get('task_instance_priority', 0)
-        if priority > 0:
-            reward += 0.2
+        # ==================== 资源多样性奖励（防止资源集中）====================
+        # 【改进】增强并行调度能力，更积极地奖励资源多样性
+        if len(self.task_schedule_history) > 3:  # 从10改为3，更早开始鼓励并行
+            # 统计已使用的不同资源数
+            used_resources = set(record['host'] for record in self.task_schedule_history)
+            total_available = len(self.available_resources)
+            
+            # 资源多样性比例
+            diversity_ratio = len(used_resources) / total_available
+            
+            # 【改进】更强的惩罚资源集中，从70%降低到50%阈值
+            if diversity_ratio < 0.5:
+                diversity_penalty = (0.5 - diversity_ratio) * 20.0  # 从10.0增加到20.0
+                reward -= diversity_penalty
+            
+            # 【改进】大幅提高使用新资源的奖励
+            if host not in used_resources:
+                reward += 10.0  # 从3.0增加到10.0，强烈鼓励使用新资源
+            
+            # 【新增】额外奖励多资源并行使用
+            if diversity_ratio >= 0.8:  # 使用了80%以上的资源
+                reward += 15.0  # 高并行度奖励
         
         return reward
     
@@ -906,29 +1290,48 @@ class HistoricalReplaySimulator:
             if max_machine_time > 0:
                 return max_machine_time
         
-        # 方法2: 基于调度历史计算
+        # 方法2: 基于调度历史计算（修复：使用timestamp + duration）
         if self.task_schedule_history:
             # 找到最后一个任务的完成时间
             max_completion_time = 0.0
             for record in self.task_schedule_history:
-                completion_time = record.get('timestamp', 0.0)
+                start_time = record.get('timestamp', 0.0)
+                duration = record.get('duration', 0.0)
+                completion_time = start_time + duration
                 max_completion_time = max(max_completion_time, completion_time)
             return max_completion_time
         
         return 0.0
     
     def get_resource_utilization(self) -> float:
-        """获取资源利用率"""
+        """
+        获取资源利用率（修正版）
+        资源利用率 = 实际工作时间 / (Makespan × 所有可用资源数)
+        只计算duration > 0的任务，排除0持续时间的判断任务
+        """
         if not self.available_resources:
             return 0.0
         
-        total_utilization = 0.0
-        for resource in self.available_resources.values():
-            cpu_util = resource['cpu_used'] / resource['cpu_capacity']
-            memory_util = resource['memory_used'] / resource['memory_capacity']
-            total_utilization += (cpu_util + memory_util) / 2
+        # 获取makespan
+        makespan = self.get_makespan()
+        if makespan == 0:
+            return 0.0
         
-        return total_utilization / len(self.available_resources)
+        # 计算实际工作时间（只计算duration > 0的任务）
+        total_work = 0.0
+        if self.task_schedule_history:
+            for record in self.task_schedule_history:
+                duration = record.get('duration', 0.0)
+                if duration > 0:  # 只计算有实际工作量的任务
+                    total_work += duration
+        
+        # 计算总容量：Makespan × 所有可用资源数
+        num_resources = len(self.available_resources)
+        total_capacity = makespan * num_resources
+        
+        # 资源利用率 = 实际工作时间 / 总容量
+        utilization = total_work / total_capacity if total_capacity > 0 else 0.0
+        return min(utilization, 1.0)  # 限制在0-1之间
     
     def get_resource_efficiency(self) -> Dict:
         """监控资源利用效率"""
@@ -995,7 +1398,7 @@ class HistoricalReplaySimulator:
     @property
     def num_resources(self) -> int:
         """返回可用资源数量"""
-        return len(self.available_resources)
+        return len(self._get_action_hosts())
     
     @property
     def tasks(self) -> List[Dict]:
@@ -1050,24 +1453,41 @@ class HistoricalReplaySimulator:
         return []
     
     def _estimate_task_duration(self, task: pd.Series) -> float:
-        """估算任务执行时间"""
+        """估算任务执行时间，优先使用真实数据"""
         if pd.notna(task.get('start_time')) and pd.notna(task.get('end_time')):
-            start_time = pd.to_datetime(task['start_time'])
-            end_time = pd.to_datetime(task['end_time'])
-            return (end_time - start_time).total_seconds()
-        else:
-            # 使用估算时间
-            task_type = task.get('task_type', 'SHELL')
-            duration_map = {
-                'SQL': 30.0,
-                'SHELL': 10.0,
-                'PYTHON': 60.0,
-                'JAVA': 120.0,
-                'SPARK': 300.0,
-                'FLINK': 300.0,
-                'HTTP': 5.0
-            }
-            return duration_map.get(task_type, 30.0)
+            try:
+                start_time = pd.to_datetime(task['start_time'])
+                end_time = pd.to_datetime(task['end_time'])
+                duration = (end_time - start_time).total_seconds()
+                
+                # 确保持续时间合理（至少1秒，最多24小时）
+                duration = max(1.0, min(duration, 86400.0))
+                return duration
+            except Exception as e:
+                self.logger.warning(f"Error parsing task duration: {e}")
+        
+        # 如果没有真实时间数据，使用基于任务类型的合理估算
+        task_type = task.get('task_type', 'SHELL')
+        duration_map = {
+            'SQL': 30.0,
+            'SHELL': 10.0,
+            'PYTHON': 60.0,
+            'JAVA': 120.0,
+            'SPARK': 300.0,
+            'FLINK': 300.0,
+            'HTTP': 5.0
+        }
+        
+        base_duration = duration_map.get(task_type, 30.0)
+        
+        # 根据任务名称或描述调整持续时间
+        task_name = str(task.get('name', '')).lower()
+        if any(keyword in task_name for keyword in ['large', 'big', 'huge', 'massive']):
+            base_duration *= 2.0
+        elif any(keyword in task_name for keyword in ['small', 'tiny', 'quick', 'fast']):
+            base_duration *= 0.5
+        
+        return base_duration
     
     def simulate_random_schedule(self, algorithm_name: str) -> Dict:
         """为RL算法提供随机调度接口"""

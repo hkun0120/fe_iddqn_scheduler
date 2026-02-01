@@ -1,0 +1,363 @@
+{
+  "test_time": "20260130_133944",
+  "workflow_count": 10,
+  "detailed_results": [
+    {
+      "process_id": 291632,
+      "workflow_name": "EAST2-检核-mon_verfiy2_保全其他-3-20250924101502252",
+      "task_count": 10,
+      "original_makespan": 42232.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 43547.0,
+          "resource_utilization": 0.2,
+          "improvement": -3.1137526046599735
+        },
+        "RoundRobin": {
+          "makespan": 42229.0,
+          "resource_utilization": 0.20624215586445332,
+          "improvement": 0.007103618109490433
+        },
+        "SJF": {
+          "makespan": 42229.0,
+          "resource_utilization": 0.20624215586445332,
+          "improvement": 0.007103618109490433
+        },
+        "EFT": {
+          "makespan": 42229.0,
+          "resource_utilization": 0.20624215586445332,
+          "improvement": 0.007103618109490433
+        },
+        "FE-IDDQN": {
+          "makespan": 42229.0,
+          "resource_utilization": 0.20624215586445332,
+          "improvement": 0.007103618109490433
+        }
+      }
+    },
+    {
+      "process_id": 293723,
+      "workflow_name": "保单登记股份增量正式报送调度_230000_黑龙江-7-20250925043500920",
+      "task_count": 30,
+      "original_makespan": 14248.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 12876.0,
+          "resource_utilization": 0.2,
+          "improvement": 9.629421673217294
+        },
+        "RoundRobin": {
+          "makespan": 11848.0,
+          "resource_utilization": 0.2173531397704254,
+          "improvement": 16.844469399213924
+        },
+        "SJF": {
+          "makespan": 11425.0,
+          "resource_utilization": 0.22540043763676149,
+          "improvement": 19.81330713082538
+        },
+        "EFT": {
+          "makespan": 11425.0,
+          "resource_utilization": 0.22540043763676149,
+          "improvement": 19.81330713082538
+        },
+        "FE-IDDQN": {
+          "makespan": 11427.0,
+          "resource_utilization": 0.22536098713573116,
+          "improvement": 19.7992700729927
+        }
+      }
+    },
+    {
+      "process_id": 293724,
+      "workflow_name": "保单登记股份增量正式报送调度_440000_广东-6-20250925043500954",
+      "task_count": 30,
+      "original_makespan": 14246.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 14125.0,
+          "resource_utilization": 0.2,
+          "improvement": 0.8493612242032852
+        },
+        "RoundRobin": {
+          "makespan": 9186.0,
+          "resource_utilization": 0.30753320269976053,
+          "improvement": 35.51874210304647
+        },
+        "SJF": {
+          "makespan": 8830.0,
+          "resource_utilization": 0.3199320498301246,
+          "improvement": 38.01768917590903
+        },
+        "EFT": {
+          "makespan": 8830.0,
+          "resource_utilization": 0.3199320498301246,
+          "improvement": 38.01768917590903
+        },
+        "FE-IDDQN": {
+          "makespan": 8832.0,
+          "resource_utilization": 0.3198596014492754,
+          "improvement": 38.0036501474098
+        }
+      }
+    },
+    {
+      "process_id": 293719,
+      "workflow_name": "保单登记股份增量正式报送调度_410000_河南-6-20250925043500920",
+      "task_count": 30,
+      "original_makespan": 14246.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 14536.0,
+          "resource_utilization": 0.2,
+          "improvement": -2.0356591323880386
+        },
+        "RoundRobin": {
+          "makespan": 9372.0,
+          "resource_utilization": 0.3102005975245412,
+          "improvement": 34.213112452618276
+        },
+        "SJF": {
+          "makespan": 9372.0,
+          "resource_utilization": 0.3102005975245412,
+          "improvement": 34.213112452618276
+        },
+        "EFT": {
+          "makespan": 9372.0,
+          "resource_utilization": 0.3102005975245412,
+          "improvement": 34.213112452618276
+        },
+        "FE-IDDQN": {
+          "makespan": 9374.0,
+          "resource_utilization": 0.31013441433752936,
+          "improvement": 34.19907342411905
+        }
+      }
+    },
+    {
+      "process_id": 293706,
+      "workflow_name": "保单登记股份增量正式报送调度_370000_山东-6-20250925043500500",
+      "task_count": 30,
+      "original_makespan": 14245.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 16703.0,
+          "resource_utilization": 0.2,
+          "improvement": -17.255177255177255
+        },
+        "RoundRobin": {
+          "makespan": 11082.0,
+          "resource_utilization": 0.30144378271070205,
+          "improvement": 22.204282204282205
+        },
+        "SJF": {
+          "makespan": 11082.0,
+          "resource_utilization": 0.30144378271070205,
+          "improvement": 22.204282204282205
+        },
+        "EFT": {
+          "makespan": 11082.0,
+          "resource_utilization": 0.30144378271070205,
+          "improvement": 22.204282204282205
+        },
+        "FE-IDDQN": {
+          "makespan": 11083.0,
+          "resource_utilization": 0.3014165839574123,
+          "improvement": 22.197262197262198
+        }
+      }
+    },
+    {
+      "process_id": 293718,
+      "workflow_name": "保单登记股份增量正式报送调度_320000_江苏-6-20250925043500920",
+      "task_count": 30,
+      "original_makespan": 14245.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 16296.0,
+          "resource_utilization": 0.2,
+          "improvement": -14.398034398034397
+        },
+        "RoundRobin": {
+          "makespan": 10952.0,
+          "resource_utilization": 0.29758948137326513,
+          "improvement": 23.116883116883116
+        },
+        "SJF": {
+          "makespan": 10952.0,
+          "resource_utilization": 0.29758948137326513,
+          "improvement": 23.116883116883116
+        },
+        "EFT": {
+          "makespan": 10952.0,
+          "resource_utilization": 0.29758948137326513,
+          "improvement": 23.116883116883116
+        },
+        "FE-IDDQN": {
+          "makespan": 10957.0,
+          "resource_utilization": 0.29745368257734783,
+          "improvement": 23.08178308178308
+        }
+      }
+    },
+    {
+      "process_id": 293710,
+      "workflow_name": "保单登记股份增量正式报送调度_130000_河北-6-20250925043500532",
+      "task_count": 30,
+      "original_makespan": 14238.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 13001.0,
+          "resource_utilization": 0.2,
+          "improvement": 8.688017980053377
+        },
+        "RoundRobin": {
+          "makespan": 11564.0,
+          "resource_utilization": 0.22485299204427533,
+          "improvement": 18.780727630285153
+        },
+        "SJF": {
+          "makespan": 11564.0,
+          "resource_utilization": 0.22485299204427533,
+          "improvement": 18.780727630285153
+        },
+        "EFT": {
+          "makespan": 11564.0,
+          "resource_utilization": 0.22485299204427533,
+          "improvement": 18.780727630285153
+        },
+        "FE-IDDQN": {
+          "makespan": 11569.0,
+          "resource_utilization": 0.22475581294839658,
+          "improvement": 18.745610338530692
+        }
+      }
+    },
+    {
+      "process_id": 293700,
+      "workflow_name": "保单登记股份增量正式报送调度_530000_云南-7-20250925043500499",
+      "task_count": 30,
+      "original_makespan": 14238.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 13109.0,
+          "resource_utilization": 0.2,
+          "improvement": 7.929484478157045
+        },
+        "RoundRobin": {
+          "makespan": 12009.0,
+          "resource_utilization": 0.21831959363810474,
+          "improvement": 15.655288664138222
+        },
+        "SJF": {
+          "makespan": 11613.0,
+          "resource_utilization": 0.22576422974252994,
+          "improvement": 18.436578171091444
+        },
+        "EFT": {
+          "makespan": 11613.0,
+          "resource_utilization": 0.22576422974252994,
+          "improvement": 18.436578171091444
+        },
+        "FE-IDDQN": {
+          "makespan": 11614.0,
+          "resource_utilization": 0.22574479076976064,
+          "improvement": 18.429554712740554
+        }
+      }
+    },
+    {
+      "process_id": 293722,
+      "workflow_name": "保单登记股份增量正式报送调度_310000_上海-6-20250925043500920",
+      "task_count": 30,
+      "original_makespan": 14238.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 12900.0,
+          "resource_utilization": 0.2,
+          "improvement": 9.397387273493468
+        },
+        "RoundRobin": {
+          "makespan": 11706.0,
+          "resource_utilization": 0.2203997949769349,
+          "improvement": 17.78339654445849
+        },
+        "SJF": {
+          "makespan": 11616.0,
+          "resource_utilization": 0.22210743801652894,
+          "improvement": 18.415507796038767
+        },
+        "EFT": {
+          "makespan": 11616.0,
+          "resource_utilization": 0.22210743801652894,
+          "improvement": 18.415507796038767
+        },
+        "FE-IDDQN": {
+          "makespan": 11621.0,
+          "resource_utilization": 0.22201187505378195,
+          "improvement": 18.38039050428431
+        }
+      }
+    },
+    {
+      "process_id": 293721,
+      "workflow_name": "保单登记股份增量正式报送调度_350000_福建-6-20250925043500920",
+      "task_count": 30,
+      "original_makespan": 14238.0,
+      "algorithms": {
+        "FIFO": {
+          "makespan": 13013.0,
+          "resource_utilization": 0.2,
+          "improvement": 8.603736479842675
+        },
+        "RoundRobin": {
+          "makespan": 11916.0,
+          "resource_utilization": 0.21841221886539108,
+          "improvement": 16.308470290771176
+        },
+        "SJF": {
+          "makespan": 11462.0,
+          "resource_utilization": 0.22706333973128598,
+          "improvement": 19.497120382076133
+        },
+        "EFT": {
+          "makespan": 11462.0,
+          "resource_utilization": 0.22706333973128598,
+          "improvement": 19.497120382076133
+        },
+        "FE-IDDQN": {
+          "makespan": 11463.0,
+          "resource_utilization": 0.22704353136177266,
+          "improvement": 19.490096923725243
+        }
+      }
+    }
+  ],
+  "algorithm_summary": {
+    "FIFO": {
+      "avg_improvement": 0.8294785718707482,
+      "avg_makespan": 17010.6,
+      "avg_utilization": 0.2
+    },
+    "RoundRobin": {
+      "avg_improvement": 20.043247602380653,
+      "avg_makespan": 14186.4,
+      "avg_utilization": 0.2522346959467853
+    },
+    "SJF": {
+      "avg_improvement": 21.2502311678119,
+      "avg_makespan": 14014.5,
+      "avg_utilization": 0.2560596504474468
+    },
+    "EFT": {
+      "avg_improvement": 21.2502311678119,
+      "avg_makespan": 14014.5,
+      "avg_utilization": 0.2560596504474468
+    },
+    "FE-IDDQN": {
+      "avg_improvement": 21.233379502095712,
+      "avg_makespan": 14016.9,
+      "avg_utilization": 0.25600234354554613
+    }
+  }
+}

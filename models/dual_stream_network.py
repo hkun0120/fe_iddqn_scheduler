@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 # 移除不需要的导入
+
+from .graph_transformer import GraphTransformerEncoder
 
 class AttentionModule(nn.Module):
     """注意力机制模块"""
@@ -271,7 +273,9 @@ class DualStreamNetwork(nn.Module):
                  task_hidden_dims: List[int], resource_hidden_dims: List[int],
                  fusion_dim: int, output_dim: int, 
                  attention_dim: int = 64, num_heads: int = 4, 
-                 dropout_rate: float = 0.1):
+                 dropout_rate: float = 0.1,
+                 enable_graph_encoder: bool = False,
+                 graph_encoder_layers: int = 2):
         super(DualStreamNetwork, self).__init__()
         
         # 任务流
@@ -282,6 +286,18 @@ class DualStreamNetwork(nn.Module):
             num_heads=num_heads,
             dropout_rate=dropout_rate
         )
+
+        # 可选：Graph Transformer对任务DAG做结构化编码（在task_stream之后、fusion之前）
+        self.enable_graph_encoder = enable_graph_encoder
+        if enable_graph_encoder:
+            self.graph_encoder = GraphTransformerEncoder(
+                dim=task_hidden_dims[-1],
+                num_layers=graph_encoder_layers,
+                num_heads=num_heads,
+                dropout=dropout_rate,
+            )
+        else:
+            self.graph_encoder = None
         
         # 资源流
         self.resource_stream = ResourceStream(
@@ -301,8 +317,12 @@ class DualStreamNetwork(nn.Module):
             dropout_rate=dropout_rate
         )
         
-    def forward(self, task_features: torch.Tensor, 
-                resource_features: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        task_features: torch.Tensor,
+        resource_features: torch.Tensor,
+        graph_adj: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         前向传播
         
@@ -319,6 +339,10 @@ class DualStreamNetwork(nn.Module):
         
         # 任务流处理
         task_output = self.task_stream(task_features)
+
+        # DAG结构编码（可选）
+        if self.enable_graph_encoder and self.graph_encoder is not None:
+            task_output = self.graph_encoder(task_output, graph_adj)
         
         # 资源流处理
         resource_output = self.resource_stream(resource_features)

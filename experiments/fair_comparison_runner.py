@@ -185,9 +185,21 @@ class FairComparisonRunner:
         task_input_dim = task_features.shape[-1] if task_features.size > 0 else 16
         resource_input_dim = resource_features.shape[-1] if resource_features.size > 0 else 7
         action_dim = simulator.num_resources
+
+        # 状态结构（用于从flatten状态恢复回(任务,资源)）
+        max_tasks = task_features.shape[1] if task_features is not None and task_features.size > 0 else None
+        max_resources = resource_features.shape[1] if resource_features is not None and resource_features.size > 0 else None
         
         # 创建智能体
-        agent = FE_IDDQN(task_input_dim, resource_input_dim, action_dim, self.device)
+        agent = FE_IDDQN(
+            task_input_dim,
+            resource_input_dim,
+            action_dim,
+            self.device,
+            max_tasks=max_tasks,
+            max_resources=max_resources,
+            enable_graph_encoder=True,
+        )
         
         # 获取算法参数
         algorithm_params = Hyperparameters.get_algorithm_params('FE_IDDQN')
@@ -196,7 +208,7 @@ class FairComparisonRunner:
         episode_rewards = []
         episode_makespans = []
         
-        for episode in range(algorithm_params.get('num_episodes', 50)):
+        for episode in range(algorithm_params.get('max_episodes', 50)):
             simulator.reset()
             episode_reward = 0
             step_count = 0
@@ -205,10 +217,12 @@ class FairComparisonRunner:
             
             while not simulator.is_done() and step_count < max_steps:
                 state = simulator.get_state()
-                action = agent.select_action(state[0], state[1])
+                graph_adj = simulator.get_graph_adj()
+                action = agent.select_action(state[0], state[1], graph_adj=graph_adj)
                 next_state, reward, done, info = simulator.step(action)
+                next_graph_adj = simulator.get_graph_adj()
                 
-                agent.store_experience(state, action, reward, next_state, done)
+                agent.store_experience(state, action, reward, next_state, done, graph_adj=graph_adj, next_graph_adj=next_graph_adj)
                 
                 if step_count % algorithm_params.get('train_freq', 4) == 0:
                     agent.train()
@@ -223,7 +237,7 @@ class FairComparisonRunner:
             episode_makespans.append(simulator.get_makespan())
             
             # 更新网络
-            if episode % algorithm_params.get('target_update_frequency', 10) == 0:
+            if episode % algorithm_params.get('target_update_freq', 10) == 0:
                 agent.update_target_network()
             
             agent.update_exploration_params()

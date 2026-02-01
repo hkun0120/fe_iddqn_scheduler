@@ -1,0 +1,263 @@
+{
+  "test_time": "20260129_170548",
+  "workflows_tested": 5,
+  "results": [
+    {
+      "makespan": 43547.0,
+      "resource_utilization": 0.2,
+      "total_tasks": 10,
+      "algorithm": "FIFO",
+      "process_id": 291632,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 42229.0,
+      "resource_utilization": 0.20624215586445332,
+      "total_tasks": 10,
+      "algorithm": "RoundRobin",
+      "process_id": 291632,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 42229.0,
+      "resource_utilization": 0.20624215586445332,
+      "total_tasks": 10,
+      "algorithm": "SJF",
+      "process_id": 291632,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 42229.0,
+      "resource_utilization": 0.20624215586445332,
+      "total_tasks": 10,
+      "algorithm": "EFT",
+      "process_id": 291632,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 42229.0,
+      "resource_utilization": 0.20624215586445332,
+      "total_tasks": 10,
+      "algorithm": "LoadBalance",
+      "process_id": 291632,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 21093.0,
+      "resource_utilization": 0.2,
+      "total_tasks": 555,
+      "algorithm": "FIFO",
+      "process_id": 293147,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 5121.0,
+      "resource_utilization": 0.823784417106034,
+      "total_tasks": 555,
+      "algorithm": "RoundRobin",
+      "process_id": 293147,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 4230.0,
+      "resource_utilization": 0.9973049645390071,
+      "total_tasks": 555,
+      "algorithm": "SJF",
+      "process_id": 293147,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 4230.0,
+      "resource_utilization": 0.9973049645390071,
+      "total_tasks": 555,
+      "algorithm": "EFT",
+      "process_id": 293147,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 4230.0,
+      "resource_utilization": 0.9973049645390071,
+      "total_tasks": 555,
+      "algorithm": "LoadBalance",
+      "process_id": 293147,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 18977.0,
+      "resource_utilization": 0.2,
+      "total_tasks": 61,
+      "algorithm": "FIFO",
+      "process_id": 291298,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 6192.0,
+      "resource_utilization": 0.6129521963824289,
+      "total_tasks": 61,
+      "algorithm": "RoundRobin",
+      "process_id": 291298,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 5157.0,
+      "resource_utilization": 0.7359705254993213,
+      "total_tasks": 61,
+      "algorithm": "SJF",
+      "process_id": 291298,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 4535.0,
+      "resource_utilization": 0.8369128996692392,
+      "total_tasks": 61,
+      "algorithm": "EFT",
+      "process_id": 291298,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 5157.0,
+      "resource_utilization": 0.7359705254993213,
+      "total_tasks": 61,
+      "algorithm": "LoadBalance",
+      "process_id": 291298,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 16760.0,
+      "resource_utilization": 0.2,
+      "total_tasks": 30,
+      "algorithm": "FIFO",
+      "process_id": 290990,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 10642.0,
+      "resource_utilization": 0.31497838752114266,
+      "total_tasks": 30,
+      "algorithm": "RoundRobin",
+      "process_id": 290990,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 10642.0,
+      "resource_utilization": 0.31497838752114266,
+      "total_tasks": 30,
+      "algorithm": "SJF",
+      "process_id": 290990,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 10642.0,
+      "resource_utilization": 0.31497838752114266,
+      "total_tasks": 30,
+      "algorithm": "EFT",
+      "process_id": 290990,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 10642.0,
+      "resource_utilization": 0.31497838752114266,
+      "total_tasks": 30,
+      "algorithm": "LoadBalance",
+      "process_id": 290990,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 16703.0,
+      "resource_utilization": 0.2,
+      "total_tasks": 30,
+      "algorithm": "FIFO",
+      "process_id": 293706,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 11082.0,
+      "resource_utilization": 0.30144378271070205,
+      "total_tasks": 30,
+      "algorithm": "RoundRobin",
+      "process_id": 293706,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 11082.0,
+      "resource_utilization": 0.30144378271070205,
+      "total_tasks": 30,
+      "algorithm": "SJF",
+      "process_id": 293706,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 11082.0,
+      "resource_utilization": 0.30144378271070205,
+      "total_tasks": 30,
+      "algorithm": "EFT",
+      "process_id": 293706,
+      "dependency_valid": true,
+      "violation_count": 0
+    },
+    {
+      "makespan": 11082.0,
+      "resource_utilization": 0.30144378271070205,
+      "total_tasks": 30,
+      "algorithm": "LoadBalance",
+      "process_id": 293706,
+      "dependency_valid": true,
+      "violation_count": 0
+    }
+  ],
+  "algorithm_stats": {
+    "FIFO": {
+      "avg_makespan": 23416.0,
+      "std_makespan": 10195.341249806208,
+      "avg_utilization": 0.2,
+      "all_dependencies_valid": true
+    },
+    "RoundRobin": {
+      "avg_makespan": 15053.2,
+      "std_makespan": 13790.740972116038,
+      "avg_utilization": 0.45188018791695217,
+      "all_dependencies_valid": true
+    },
+    "SJF": {
+      "avg_makespan": 14668.0,
+      "std_makespan": 14057.650998655501,
+      "avg_utilization": 0.5111879632269253,
+      "all_dependencies_valid": true
+    },
+    "EFT": {
+      "avg_makespan": 14543.6,
+      "std_makespan": 14143.754446397887,
+      "avg_utilization": 0.5313764380609088,
+      "all_dependencies_valid": true
+    },
+    "LoadBalance": {
+      "avg_makespan": 14668.0,
+      "std_makespan": 14057.650998655501,
+      "avg_utilization": 0.5111879632269253,
+      "all_dependencies_valid": true
+    }
+  }
+}

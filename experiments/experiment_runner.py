@@ -348,13 +348,24 @@ class ExperimentRunner:
                 resource_input_dim = resource_features.shape[-1] if resource_features.size > 0 else 7
                 action_dim = simulator.num_resources
 
-                agent = FE_IDDQN(task_input_dim, resource_input_dim, action_dim, self.device)
+                max_tasks = task_features.shape[1] if task_features is not None and task_features.size > 0 else None
+                max_resources = resource_features.shape[1] if resource_features is not None and resource_features.size > 0 else None
+
+                agent = FE_IDDQN(
+                    task_input_dim,
+                    resource_input_dim,
+                    action_dim,
+                    self.device,
+                    max_tasks=max_tasks,
+                    max_resources=max_resources,
+                    enable_graph_encoder=True,
+                )
                 
                 # 实际训练过程
                 episode_rewards = []
                 episode_makespans = []
                 
-                for episode in range(algorithm_params.get('num_episodes', 100)):
+                for episode in range(algorithm_params.get('max_episodes', 100)):
                     simulator.reset()
                     episode_reward = 0
                     step_count = 0
@@ -366,12 +377,14 @@ class ExperimentRunner:
                     while not simulator.is_done() and step_count < max_steps:
                         state = simulator.get_state()
                         task_features, resource_features = state
+                        graph_adj = simulator.get_graph_adj()
                         
                         # 选择动作
-                        action = agent.select_action(task_features, resource_features)
+                        action = agent.select_action(task_features, resource_features, graph_adj=graph_adj)
                         
                         # 执行动作
                         next_state, reward, done, info = simulator.step(action)
+                        next_graph_adj = simulator.get_graph_adj()
                         
                         # 添加step执行后的调试信息
                         if step_count % 50 == 0:  # 每50步检查一次
@@ -384,7 +397,15 @@ class ExperimentRunner:
                                 self.logger.warning(f"        ⚠️  任务调度失败或未调度")
                         
                         # 存储经验
-                        agent.store_experience(state, action, reward, next_state, done)
+                        agent.store_experience(
+                            state,
+                            action,
+                            reward,
+                            next_state,
+                            done,
+                            graph_adj=graph_adj,
+                            next_graph_adj=next_graph_adj,
+                        )
                         
                         # 训练网络
                         if step_count % algorithm_params.get('train_freq', 4) == 0:
@@ -474,7 +495,7 @@ class ExperimentRunner:
                             break
                     
                     # 更新目标网络
-                    if episode % algorithm_params.get('target_update_frequency', 10) == 0:
+                    if episode % algorithm_params.get('target_update_freq', 10) == 0:
                         agent.update_target_network()
                     
                     # 更新探索参数
@@ -510,17 +531,59 @@ class ExperimentRunner:
                 action_size = simulator.num_resources
                 agent = DQNScheduler(state_size, action_size, self.device)
                 schedule_result = simulator.simulate_random_schedule(algorithm_name)
+                
+                # 修复：确保结果格式一致
+                if 'metrics' in schedule_result:
+                    final_metrics = schedule_result['metrics']
+                else:
+                    final_metrics = {
+                        'makespan': schedule_result.get('makespan', 0),
+                        'resource_utilization': schedule_result.get('resource_utilization', 0),
+                        'average_reward': schedule_result.get('total_reward', 0),
+                        'final_episode_reward': schedule_result.get('total_reward', 0),
+                        'training_losses': []
+                    }
+                
+                results.append(final_metrics)
 
             elif algorithm_name == "DDQN":
                 state_size = 100  # 示例状态维度
                 action_size = simulator.num_resources
                 agent = DDQNScheduler(state_size, action_size, self.device)
                 schedule_result = simulator.simulate_random_schedule(algorithm_name)
+                
+                # 修复：确保结果格式一致
+                if 'metrics' in schedule_result:
+                    final_metrics = schedule_result['metrics']
+                else:
+                    final_metrics = {
+                        'makespan': schedule_result.get('makespan', 0),
+                        'resource_utilization': schedule_result.get('resource_utilization', 0),
+                        'average_reward': schedule_result.get('total_reward', 0),
+                        'final_episode_reward': schedule_result.get('total_reward', 0),
+                        'training_losses': []
+                    }
+                
+                results.append(final_metrics)
             elif algorithm_name == "BF_DDQN":
                 state_size = 100  # 示例状态维度
                 action_size = simulator.num_resources
                 agent = BF_DDQNScheduler(state_size, action_size, self.device)
                 schedule_result = simulator.simulate_random_schedule(algorithm_name)
+                
+                # 修复：确保结果格式一致
+                if 'metrics' in schedule_result:
+                    final_metrics = schedule_result['metrics']
+                else:
+                    final_metrics = {
+                        'makespan': schedule_result.get('makespan', 0),
+                        'resource_utilization': schedule_result.get('resource_utilization', 0),
+                        'average_reward': schedule_result.get('total_reward', 0),
+                        'final_episode_reward': schedule_result.get('total_reward', 0),
+                        'training_losses': []
+                    }
+                
+                results.append(final_metrics)
             elif algorithm_name == "FIFO":
                 from baselines.traditional_schedulers import FIFOScheduler
                 scheduler = FIFOScheduler()
@@ -623,9 +686,10 @@ class ExperimentRunner:
             else:
                 raise ValueError(f"Unknown algorithm: {algorithm_name}")
 
-            # 评估结果
-            metrics = self.evaluator.evaluate(schedule_result)
-            results.append(metrics)
+            # 评估结果（跳过已经在算法内部处理的DQN、DDQN、BF_DDQN）
+            if algorithm_name not in ["DQN", "DDQN", "BF_DDQN", "FE_IDDQN"]:
+                metrics = self.evaluator.evaluate(schedule_result)
+                results.append(metrics)
 
         avg_results = self._calculate_average_metrics(results)
         self.logger.info(f"  Average metrics for {algorithm_name}: {avg_results}")

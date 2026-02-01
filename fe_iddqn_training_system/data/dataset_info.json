@@ -1,0 +1,26 @@
+{
+  "total_processes": 3613,
+  "train_size": 2167,
+  "val_size": 723,
+  "test_size": 723,
+  "workflow_size_distribution": {
+    "medium": 1658,
+    "large": 1067,
+    "small": 888
+  },
+  "train_workflow_distribution": {
+    "medium": 994,
+    "large": 640,
+    "small": 533
+  },
+  "val_workflow_distribution": {
+    "medium": 332,
+    "large": 213,
+    "small": 178
+  },
+  "test_workflow_distribution": {
+    "medium": 332,
+    "large": 214,
+    "small": 177
+  }
+}
