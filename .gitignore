@@ -57,6 +57,14 @@ fe_iddqn_training_system/data/*.csv
 *.tmp
 *.temp
 
+# Thesis backup files
+*.md.bak
+*.md.bak2
+*.md.bak3
+
+# Temporary write scripts
+write_chapter2_*.py
+
 # Jupyter Notebook
 .ipynb_checkpoints/
 

@@ -15,11 +15,39 @@ import json
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib
+from matplotlib.font_manager import FontProperties
 import networkx as nx
 
 # 设置中文字体
-matplotlib.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'SimHei', 'STHeiti', 'FangSong']
-matplotlib.rcParams['axes.unicode_minus'] = False
+# 确保系统中有这个字体，或者换成其他可用的中文字体
+try:
+    # 首先尝试常见的中文字体
+    import matplotlib.font_manager as fm
+    
+    # 列出所有可用字体
+    font_names = [f.name for f in fm.fontManager.ttflist]
+    
+    # 优先选择的中文字体
+    chinese_fonts = ['Arial Unicode MS', 'PingFang SC', 'SimHei', 'Heiti SC', 'Microsoft YaHei', 'STHeiti']
+    
+    selected_font = None
+    for font in chinese_fonts:
+        if font in font_names:
+            selected_font = font
+            break
+    
+    if selected_font:
+        matplotlib.rcParams['font.sans-serif'] = [selected_font, 'DejaVu Sans']
+    else:
+        # 如果没有找到中文字体，使用默认设置
+        matplotlib.rcParams['font.sans-serif'] = ['DejaVu Sans']
+    
+    matplotlib.rcParams['axes.unicode_minus'] = False
+    
+except Exception as e:
+    # 如果设置字体失败，使用默认设置
+    matplotlib.rcParams['font.sans-serif'] = ['DejaVu Sans']
+    matplotlib.rcParams['axes.unicode_minus'] = False
 
 # 设置环境变量
 os.environ['MAX_TASKS_PER_EPISODE'] = '1000'
@@ -109,32 +137,62 @@ class WorkflowSchedulerComparison:
         }
     
     def build_dag(self, tasks, dependencies):
-        """构建DAG"""
+        """构建DAG
+        
+        关键发现：DolphinScheduler 中 CONDITIONS 和 DEPENDENT 类型任务的 task_code = 0，
+        无法直接用 task_code 作为节点标识符。
+        
+        解决方案：使用任务名称作为节点标识符，并通过任务名称建立映射。
+        """
         G = nx.DiGraph()
         
-        for _, task in tasks.iterrows():
-            task_code = task.get('task_code', task.get('id'))
-            G.add_node(task_code, task_data=task.to_dict())
+        # 获取 task_definition 用于将 code 映射到名称
+        task_defs = self.data.get('task_definition')
         
+        # 建立 task_definition.code -> 任务名称 的映射
+        def_code_to_name = {}
+        if task_defs is not None:
+            for _, td in task_defs.iterrows():
+                def_code_to_name[td['code']] = td['name']
+        
+        # 使用任务名称作为节点标识符
+        # 添加节点（使用名称作为 key）
+        for _, task in tasks.iterrows():
+            task_name = task['name']
+            G.add_node(task_name, task_data=task.to_dict())
+        
+        # 添加边（使用任务名称）
+        edges_added = 0
         for _, dep in dependencies.iterrows():
-            pre = dep.get('pre_task_code')
-            post = dep.get('post_task_code')
-            if pd.notna(pre) and pd.notna(post) and pre in G.nodes and post in G.nodes:
-                G.add_edge(pre, post)
+            pre_def = dep.get('pre_task_code')
+            post_def = dep.get('post_task_code')
+            
+            if pd.notna(pre_def) and pd.notna(post_def) and pre_def != 0:
+                # 将 task_definition.code 转换为任务名称
+                pre_name = def_code_to_name.get(pre_def)
+                post_name = def_code_to_name.get(post_def)
+                
+                if pre_name is not None and post_name is not None:
+                    if pre_name in G.nodes and post_name in G.nodes:
+                        G.add_edge(pre_name, post_name)
+                        edges_added += 1
+        
+        # 调试信息
+        print(f"    DAG 构建完成: {len(G.nodes)} 个节点, {edges_added} 条边")
         
         return G
     
     def topological_sort(self, G, tasks):
         """拓扑排序"""
         try:
-            sorted_codes = list(nx.topological_sort(G))
+            sorted_names = list(nx.topological_sort(G))
             sorted_tasks = []
-            for code in sorted_codes:
-                if code in G.nodes and 'task_data' in G.nodes[code]:
-                    sorted_tasks.append(G.nodes[code]['task_data'])
-            return sorted_tasks, sorted_codes
+            for name in sorted_names:
+                if name in G.nodes and 'task_data' in G.nodes[name]:
+                    sorted_tasks.append(G.nodes[name]['task_data'])
+            return sorted_tasks, sorted_names
         except:
-            return tasks.to_dict('records'), list(tasks['task_code'])
+            return tasks.to_dict('records'), list(tasks['name'])
     
     def get_task_duration(self, task):
         """获取任务执行时间"""
@@ -212,19 +270,22 @@ class WorkflowSchedulerComparison:
         return self._schedule_with_strategy(sorted_tasks, G, num_resources, strategy)
     
     def _schedule_with_strategy(self, sorted_tasks, G, num_resources, strategy_func):
-        """通用调度框架"""
+        """通用调度框架
+        
+        注意：现在使用任务名称作为节点标识符（因为 CONDITIONS/DEPENDENT 的 task_code = 0）
+        """
         resource_avail = {i: 0 for i in range(num_resources)}
-        task_finish = {}
+        task_finish = {}  # 使用任务名称作为 key
         schedule = []
         
         for idx, task in enumerate(sorted_tasks):
-            task_code = task.get('task_code', task.get('id'))
+            task_name = task.get('name', f'Task_{idx}')
             duration = self.get_task_duration(task)
             
-            # 计算最早开始时间（依赖约束）
+            # 计算最早开始时间（依赖约束）- 使用任务名称
             earliest = 0
-            if task_code in G:
-                for pred in G.predecessors(task_code):
+            if task_name in G:
+                for pred in G.predecessors(task_name):
                     if pred in task_finish:
                         earliest = max(earliest, task_finish[pred])
             
@@ -237,12 +298,12 @@ class WorkflowSchedulerComparison:
             
             # 更新状态
             resource_avail[selected] = finish
-            task_finish[task_code] = finish
+            task_finish[task_name] = finish
             
             schedule.append({
                 'order': idx + 1,
-                'task_code': task_code,
-                'task_name': task.get('name', f'Task_{idx}')[:30],
+                'task_code': task.get('task_code', task.get('id')),
+                'task_name': task_name,
                 'task_type': task.get('task_type', 'N/A'),
                 'resource': selected,
                 'start': start,
@@ -267,8 +328,8 @@ class WorkflowSchedulerComparison:
             return
         
         # 创建图形
-        fig, (ax_gantt, ax_legend) = plt.subplots(1, 2, figsize=(20, max(8, len(schedule) * 0.3)),
-                                                   gridspec_kw={'width_ratios': [3, 1]})
+        fig, (ax_gantt, ax_legend) = plt.subplots(1, 2, figsize=(24, max(10, len(schedule) * 0.4)),
+                                                   gridspec_kw={'width_ratios': [2.5, 1.5]})
         
         # 颜色映射
         task_types = list(set(s['task_type'] for s in schedule))
@@ -313,17 +374,20 @@ class WorkflowSchedulerComparison:
         ax_legend.axis('off')
         
         # 创建任务列表文本
-        legend_text = "任务编号 - 名称对应表:\n" + "=" * 35 + "\n"
+        legend_text_lines = ["任务编号 - 名称对应表:", "=" * 45]
         for item in schedule:
-            legend_text += f"{item['order']:2d}. {item['task_name']}\n"
+            legend_text_lines.append(f"{item['order']:>2d}. {item['task_name']}")
         
         # 添加任务类型图例
-        legend_text += "\n" + "=" * 35 + "\n任务类型:\n"
-        for task_type, color in type_colors.items():
-            legend_text += f"■ {task_type}\n"
+        legend_text_lines.append("\n" + "=" * 45)
+        legend_text_lines.append("任务类型:")
         
-        ax_legend.text(0.05, 0.95, legend_text, transform=ax_legend.transAxes,
-                      fontsize=9, verticalalignment='top', fontfamily='monospace',
+        # 合并文本
+        legend_text = "\n".join(legend_text_lines)
+
+        ax_legend.text(0.01, 0.98, legend_text, transform=ax_legend.transAxes,
+                      fontsize=9, verticalalignment='top', 
+                      fontfamily='monospace' if selected_font is None else selected_font,
                       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
         
         # 添加颜色图例
