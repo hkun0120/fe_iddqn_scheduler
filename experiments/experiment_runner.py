@@ -506,16 +506,156 @@ class ExperimentRunner:
                 }
 
             elif algorithm_name == "DQN":
-                state_size = 100  # 示例状态维度
-                action_size = simulator.num_resources
-                agent = DQNScheduler(state_size, action_size, self.device)
-                schedule_result = simulator.simulate_random_schedule(algorithm_name)
+                # 从真实数据中提取特征维度
+                task_features, resource_features = simulator.get_state()
+
+                # 创建DQN代理
+                task_input_dim = task_features.shape[-1] if len(task_features.shape) > 1 else task_features.shape[0]
+                resource_input_dim = resource_features.shape[-1] if len(resource_features.shape) > 1 else resource_features.shape[0]
+                action_dim = simulator.num_resources
+
+                agent = DQNScheduler(task_input_dim, resource_input_dim, action_dim, self.device)
+
+                # DQN训练参数（简化版本）
+                algorithm_params = {
+                    'num_episodes': 50,  # 减少训练轮数
+                    'max_steps_per_episode': 500,
+                    'train_freq': 4,
+                    'target_update_frequency': 10
+                }
+
+                # 实际训练过程
+                episode_rewards = []
+
+                for episode in range(algorithm_params.get('num_episodes', 50)):
+                    simulator.reset()
+                    episode_reward = 0
+                    step_count = 0
+
+                    max_steps = algorithm_params.get('max_steps_per_episode', 500)
+
+                    while not simulator.is_done() and step_count < max_steps:
+                        state = simulator.get_state()
+                        task_features, resource_features = state
+
+                        # 选择动作
+                        action = agent.act(task_features, resource_features)
+
+                        # 执行动作
+                        next_state, reward, done, info = simulator.step(action)
+
+                        # 存储经验
+                        agent.step(task_features, resource_features, action, reward,
+                                 next_state[0], next_state[1], done)
+
+                        # 训练网络
+                        if step_count % algorithm_params.get('train_freq', 4) == 0:
+                            agent.learn()
+
+                        episode_reward += reward
+                        step_count += 1
+
+                        if done:
+                            break
+
+                    # 更新目标网络
+                    if episode % algorithm_params.get('target_update_frequency', 10) == 0:
+                        agent.qnetwork_target.load_state_dict(agent.qnetwork_local.state_dict())
+
+                    episode_rewards.append(episode_reward)
+
+                    if episode % 10 == 0:
+                        self.logger.info(f"    DQN Episode {episode}: Reward={episode_reward:.2f}")
+
+                # 最终评估
+                final_metrics = {
+                    'makespan': simulator.get_makespan(),
+                    'resource_utilization': simulator.get_resource_utilization(),
+                    'average_reward': np.mean(episode_rewards),
+                    'final_episode_reward': episode_rewards[-1] if episode_rewards else 0
+                }
+
+                schedule_result = {
+                    'algorithm': algorithm_name,
+                    'metrics': final_metrics,
+                    'schedule_history': simulator.get_schedule_history()
+                }
 
             elif algorithm_name == "DDQN":
-                state_size = 100  # 示例状态维度
-                action_size = simulator.num_resources
-                agent = DDQNScheduler(state_size, action_size, self.device)
-                schedule_result = simulator.simulate_random_schedule(algorithm_name)
+                # 从真实数据中提取特征维度
+                task_features, resource_features = simulator.get_state()
+
+                # 创建DDQN代理
+                task_input_dim = task_features.shape[-1] if len(task_features.shape) > 1 else task_features.shape[0]
+                resource_input_dim = resource_features.shape[-1] if len(resource_features.shape) > 1 else resource_features.shape[0]
+                action_dim = simulator.num_resources
+
+                agent = DDQNScheduler(task_input_dim, resource_input_dim, action_dim, self.device)
+
+                # DDQN训练参数（简化版本）
+                algorithm_params = {
+                    'num_episodes': 50,  # 减少训练轮数
+                    'max_steps_per_episode': 500,
+                    'train_freq': 4,
+                    'target_update_frequency': 10
+                }
+
+                # 实际训练过程
+                episode_rewards = []
+
+                for episode in range(algorithm_params.get('num_episodes', 50)):
+                    simulator.reset()
+                    episode_reward = 0
+                    step_count = 0
+
+                    max_steps = algorithm_params.get('max_steps_per_episode', 500)
+
+                    while not simulator.is_done() and step_count < max_steps:
+                        state = simulator.get_state()
+                        task_features, resource_features = state
+
+                        # 选择动作
+                        action = agent.act(task_features, resource_features)
+
+                        # 执行动作
+                        next_state, reward, done, info = simulator.step(action)
+
+                        # 存储经验
+                        agent.step(task_features, resource_features, action, reward,
+                                 next_state[0], next_state[1], done)
+
+                        # 训练网络
+                        if step_count % algorithm_params.get('train_freq', 4) == 0:
+                            agent.learn()
+
+                        episode_reward += reward
+                        step_count += 1
+
+                        if done:
+                            break
+
+                    # 更新目标网络
+                    if episode % algorithm_params.get('target_update_frequency', 10) == 0:
+                        agent.qnetwork_target.load_state_dict(agent.qnetwork_local.state_dict())
+
+                    episode_rewards.append(episode_reward)
+
+                    if episode % 10 == 0:
+                        self.logger.info(f"    DDQN Episode {episode}: Reward={episode_reward:.2f}")
+
+                # 最终评估
+                final_metrics = {
+                    'makespan': simulator.get_makespan(),
+                    'resource_utilization': simulator.get_resource_utilization(),
+                    'average_reward': np.mean(episode_rewards),
+                    'final_episode_reward': episode_rewards[-1] if episode_rewards else 0
+                }
+
+                schedule_result = {
+                    'algorithm': algorithm_name,
+                    'metrics': final_metrics,
+                    'schedule_history': simulator.get_schedule_history()
+                }
             elif algorithm_name == "BF_DDQN":
                 state_size = 100  # 示例状态维度
                 action_size = simulator.num_resources

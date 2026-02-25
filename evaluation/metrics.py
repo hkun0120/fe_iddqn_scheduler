@@ -1,6 +1,66 @@
 import numpy as np
 import logging
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+
+
+class MetricCalculator:
+    """度量指标计算器 - 用于训练过程中计算各种性能指标"""
+    
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+    
+    def calculate_metrics(self, env_info: Dict[str, Any]) -> Dict[str, float]:
+        """
+        从环境信息中计算各种指标
+        
+        Args:
+            env_info: 环境返回的信息字典
+            
+        Returns:
+            包含各种指标的字典
+        """
+        metrics = {}
+        
+        # 基本指标
+        metrics['makespan'] = env_info.get('makespan', 0.0)
+        metrics['utilization'] = env_info.get('resource_utilization', 0.0)
+        metrics['load_balance'] = env_info.get('load_balance', 0.0)
+        
+        # 额外指标
+        if 'parallelism' in env_info:
+            metrics['parallelism'] = env_info['parallelism']
+        if 'waiting_time' in env_info:
+            metrics['waiting_time'] = env_info['waiting_time']
+        if 'critical_path_ratio' in env_info:
+            metrics['critical_path_ratio'] = env_info['critical_path_ratio']
+        
+        return metrics
+    
+    def calculate_episode_reward(self, metrics: Dict[str, float], 
+                                 weights: Optional[Dict[str, float]] = None) -> float:
+        """
+        计算episode的总奖励
+        
+        Args:
+            metrics: 性能指标字典
+            weights: 各指标的权重
+            
+        Returns:
+            加权总奖励
+        """
+        if weights is None:
+            weights = {
+                'makespan': -1.0,
+                'utilization': 1.0,
+                'load_balance': 1.0
+            }
+        
+        reward = 0.0
+        for metric, weight in weights.items():
+            if metric in metrics:
+                reward += weight * metrics[metric]
+        
+        return reward
 
 
 class Evaluator:

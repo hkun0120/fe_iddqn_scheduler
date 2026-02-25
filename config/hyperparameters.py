@@ -50,6 +50,69 @@ class Hyperparameters:
         }
     }
     
+    # 增强版FE-IDDQN超参数
+    ENHANCED_FE_IDDQN = {
+        # 网络架构
+        'hidden_dim': 256,
+        'fusion_dim': 256,
+        'num_transformer_layers': 2,
+        'num_heads': 4,
+        'dropout': 0.1,
+        'use_gnn': True,
+        'use_noisy_net': False,
+        
+        # 训练参数
+        'learning_rate': 3e-4,
+        'batch_size': 64,
+        'gamma': 0.99,
+        'tau': 0.005,
+        
+        # N-step
+        'n_step': 3,
+        'use_n_step': True,
+        
+        # 经验回放
+        'replay_buffer_size': 100000,
+        'use_per': True,
+        'per_alpha': 0.6,
+        'per_beta_start': 0.4,
+        
+        # 探索策略
+        'exploration_strategy': 'adaptive_epsilon',
+        'epsilon_start': 1.0,
+        'epsilon_end': 0.01,
+        'epsilon_decay': 0.995,
+        
+        # 训练控制
+        'max_episodes': 1000,
+        'max_steps_per_episode': 500,
+        'warmup_steps': 1000,
+        'train_freq': 4,
+        'target_update_freq': 100,
+        'gradient_clip': 1.0,
+        
+        # 课程学习
+        'use_curriculum': True,
+        'curriculum_stages': 3,
+        
+        # 多任务学习
+        'use_multi_task': True,
+        'auxiliary_loss_weight': 0.1,
+        
+        # 奖励塑形
+        'use_reward_shaping': True,
+        
+        # 奖励函数权重
+        'reward_weights': {
+            'makespan': 0.35,
+            'resource_utilization': 0.20,
+            'load_balance': 0.15,
+            'parallelism': 0.15,
+            'critical_path': 0.10,
+            'waiting_time': 0.05
+        }
+    }
+    
     # DQN算法超参数
     DQN = {
         'hidden_dims': [128, 64],

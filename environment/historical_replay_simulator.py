@@ -60,6 +60,8 @@ class HistoricalReplaySimulator:
         self.running_tasks = {}
         self.available_resources = {}
         self.task_schedule_history = []
+        # 重置执行时间累积器
+        self.execution_time_accumulator = {}
         
         # 获取有任务的进程ID
         processes_with_tasks = self.task_instances['process_instance_id'].unique()
@@ -171,10 +173,10 @@ class HistoricalReplaySimulator:
                 'post_task_code': relation['post_task_code']
             })
         
-        self.logger.info(f"流程 {process_definition_code} 的依赖关系数量: {len(dependency_list)}")
+        self.logger.info(f"Process {process_definition_code} has {len(dependency_list)} dependencies")
         return dependency_list
         for dep in filtered_dependencies:
-            self.logger.info(f"  依赖: {dep['pre_task']} -> {dep['post_task']}")
+            self.logger.info(f"  Dependency: {dep['pre_task']} -> {dep['post_task']}")
 
     def _update_resources_for_new_process(self):
         """为新进程更新资源状态，保留累积的执行时间"""
@@ -185,32 +187,26 @@ class HistoricalReplaySimulator:
         if len(hosts) == 0:
             hosts = ['default_host']
         
-        # 保存现有的执行时间
-        existing_execution_times = {}
-        if hasattr(self, 'available_resources'):
-            for host, resource in self.available_resources.items():
-                existing_execution_times[host] = resource.get('execution_time', 0.0)
-        
-        # 重新初始化资源，但保留累积的执行时间
+        # 使用累积器中的执行时间
         for host in hosts:
             # 估算主机资源容量
             host_tasks = self.current_process_tasks[
                 self.current_process_tasks['host'] == host
             ]
-            
+
             # 基于历史数据估算资源容量
             cpu_capacity = self._estimate_host_cpu_capacity(host_tasks)
             memory_capacity = self._estimate_host_memory_capacity(host_tasks)
-            
-            # 保留累积的执行时间，只重置资源使用状态
-            cumulative_execution_time = existing_execution_times.get(host, 0.0)
-            
+
+            # 从累积器获取执行时间，每个episode开始时重置为0
+            cumulative_execution_time = self.execution_time_accumulator.get(host, 0.0)
+
             self.available_resources[host] = {
                 'cpu_capacity': cpu_capacity,
                 'memory_capacity': memory_capacity,
                 'cpu_used': 0,  # 重置资源使用状态
                 'memory_used': 0,  # 重置资源使用状态
-                'execution_time': cumulative_execution_time,  # 保留累积的执行时间
+                'execution_time': cumulative_execution_time,  # 使用累积器中的时间
                 'task_queue': [],        # 重置任务队列
                 'current_task_end_time': cumulative_execution_time  # 基于累积时间设置
             }
@@ -836,7 +832,10 @@ class HistoricalReplaySimulator:
                 'timestamp': self.current_time,
                 'duration': task_duration
             })
-            
+
+            # 更新执行时间累积器
+            self.execution_time_accumulator[selected_host] = resource['execution_time']
+
             # 任务完成后立即释放资源（模拟任务执行完成）
             resource['cpu_used'] = max(0, resource['cpu_used'] - cpu_req)
             resource['memory_used'] = max(0, resource['memory_used'] - memory_req)
@@ -952,8 +951,8 @@ class HistoricalReplaySimulator:
     
     def print_resource_status(self):
         """打印当前资源状态（用于调试）"""
-        print(f"\n当前资源状态 (Step {getattr(self, 'current_time', 0)}):")
-        print(f"进程索引: {self.current_process_idx}, 任务索引: {self.current_task_idx}")
+        print(f"\nCurrent resource status (Step {getattr(self, 'current_time', 0)}):")
+        print(f"Process index: {self.current_process_idx}, Task index: {self.current_task_idx}")
         
         for host, resource in self.available_resources.items():
             cpu_util = resource['cpu_used'] / resource['cpu_capacity'] if resource['cpu_capacity'] > 0 else 0
@@ -962,13 +961,13 @@ class HistoricalReplaySimulator:
             print(f"  {host}:")
             print(f"    CPU: {resource['cpu_used']:.1f}/{resource['cpu_capacity']:.1f} ({cpu_util:.1%})")
             print(f"    Memory: {resource['memory_used']:.1f}/{resource['memory_capacity']:.1f} ({mem_util:.1%})")
-            print(f"    执行时间: {resource['execution_time']:.1f}s")
+            print(f"    Execution time: {resource['execution_time']:.1f}s")
         
         if self.current_task_idx < len(self.current_process_tasks):
             current_task = self.current_process_tasks.iloc[self.current_task_idx]
-            print(f"  当前任务: {current_task['name']} (类型: {current_task.get('task_type', 'UNKNOWN')})")
-            print(f"  CPU需求: {self._estimate_task_cpu_requirement(current_task):.1f}")
-            print(f"  内存需求: {self._estimate_task_memory_requirement(current_task):.1f}")
+            print(f"  Current task: {current_task['name']} (Type: {current_task.get('task_type', 'UNKNOWN')})")
+            print(f"  CPU requirement: {self._estimate_task_cpu_requirement(current_task):.1f}")
+            print(f"  Memory requirement: {self._estimate_task_memory_requirement(current_task):.1f}")
     
     def get_schedule_history(self) -> List[Dict]:
         """获取调度历史"""

@@ -13,4 +13,5 @@ plotly>=5.3.0
 jupyter>=1.0.0
 notebook>=6.4.0
 ipywidgets>=7.6.0
+wfcommons>=1.4.0
 
