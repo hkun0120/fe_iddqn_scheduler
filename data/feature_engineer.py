@@ -6,7 +6,7 @@ import logging
 from typing import Dict, List, Tuple, Optional
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectKBest, f_classif
-from config.config import Config
+# 移除不需要的导入
 
 
 class FeatureEngineer:
@@ -533,7 +533,7 @@ class FeatureEngineer:
         return df_normalized
 
     def select_features(self, X: pd.DataFrame, y: pd.Series, 
-                       k: int = Config.FEATURE_SELECTION_K) -> Tuple[pd.DataFrame, List[str]]:
+                       k: int = 10) -> Tuple[pd.DataFrame, List[str]]:
         """特征选择"""
         self.logger.info(f"Selecting top {k} features...")
         
