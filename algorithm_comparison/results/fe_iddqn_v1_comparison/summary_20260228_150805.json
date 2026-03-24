@@ -1,0 +1,1372 @@
+{
+  "config": {
+    "seed": 42,
+    "train_episodes": 1000,
+    "eval_episodes": 5,
+    "num_resources": 5,
+    "train_workflows": 30,
+    "test_workflows": 20
+  },
+  "summary": [
+    {
+      "algorithm": "Random",
+      "avg_makespan": 1550.9,
+      "std_makespan": 2622.4290156265433,
+      "avg_utilization": 0.414349411566212,
+      "avg_load_balance": 0.32965816291197403,
+      "train_time": 0.0
+    },
+    {
+      "algorithm": "RoundRobin",
+      "avg_makespan": 1430.45,
+      "std_makespan": 2469.867981795788,
+      "avg_utilization": 0.4449027709336,
+      "avg_load_balance": 0.42027288899999043,
+      "train_time": 0.0
+    },
+    {
+      "algorithm": "SJF",
+      "avg_makespan": 1273.2,
+      "std_makespan": 2445.9395250087437,
+      "avg_utilization": 0.5368121234724871,
+      "avg_load_balance": 0.6151753474484007,
+      "train_time": 0.0
+    },
+    {
+      "algorithm": "EFT",
+      "avg_makespan": 1273.2,
+      "std_makespan": 2445.9395250087437,
+      "avg_utilization": 0.5368121234724871,
+      "avg_load_balance": 0.6151753474484007,
+      "train_time": 0.0
+    },
+    {
+      "algorithm": "CPOP",
+      "avg_makespan": 1485.1,
+      "std_makespan": 2528.9079046102092,
+      "avg_utilization": 0.4355493577539519,
+      "avg_load_balance": 0.4760805807056022,
+      "train_time": 0.0
+    },
+    {
+      "algorithm": "原始 FE-IDDQN",
+      "avg_makespan": 2280.7799999999997,
+      "std_makespan": 3171.941535968152,
+      "avg_utilization": 0.277914296716451,
+      "avg_load_balance": 0.012488518680244884,
+      "train_time": 2859.4304571151733
+    },
+    {
+      "algorithm": "GA-HPO FE-IDDQN",
+      "avg_makespan": 1815.39,
+      "std_makespan": 3232.8221327348037,
+      "avg_utilization": 0.44256923630608414,
+      "avg_load_balance": 0.3063067623613164,
+      "train_time": 694.2958452701569
+    }
+  ],
+  "all_results": [
+    {
+      "algorithm": "Random",
+      "train_time": 0.0,
+      "test_results": [
+        {
+          "name": "east_ods_eastjt_agent_660000_重庆-1-20250925031026042",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 494.0,
+          "makespan": 690.8,
+          "utilization": 0.5731471865132161,
+          "load_balance": 0.5157715237749636
+        },
+        {
+          "name": "保单登记股份增量正式报送调度_230000_黑龙江-7-20250925043500920",
+          "num_tasks": 49,
+          "num_deps": 10,
+          "original_makespan": 14248.0,
+          "makespan": 12190.2,
+          "utilization": 0.2436858558818457,
+          "load_balance": 0.3964651100519693
+        },
+        {
+          "name": "circ_ods_circgf_cont_v8_340000_安徽_并行-2-20250924072421829",
+          "num_tasks": 23,
+          "num_deps": 22,
+          "original_makespan": 687.0,
+          "makespan": 1145.0,
+          "utilization": 0.5131885055618126,
+          "load_balance": 0.30738023498583483
+        },
+        {
+          "name": "circ_ods_circgf_cont_dx_630000_青海_多批次_并行-1-20250924164356311",
+          "num_tasks": 37,
+          "num_deps": 16,
+          "original_makespan": 333.0,
+          "makespan": 515.6,
+          "utilization": 0.45330697747540566,
+          "load_balance": 0.32699640843488603
+        },
+        {
+          "name": "circ_circgf_ods_return_110000_北京_多批次_并行-5-20250924162813030",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 185.0,
+          "makespan": 244.6,
+          "utilization": 0.5207722377845306,
+          "load_balance": 0.31541223567607046
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_430000_湖南-1-20250925025000921",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 708.0,
+          "makespan": 946.6,
+          "utilization": 0.332979606267485,
+          "load_balance": 0.03310613367262085
+        },
+        {
+          "name": "east_eastjt_ods_return_420000_湖北-1-20250924030654581",
+          "num_tasks": 13,
+          "num_deps": 13,
+          "original_makespan": 146.0,
+          "makespan": 202.6,
+          "utilization": 0.33404707170224407,
+          "load_balance": 0.0007239665689825036
+        },
+        {
+          "name": "【惠民保调度_36】【所有模块】_省份一部-1-20250924100721457",
+          "num_tasks": 12,
+          "num_deps": 0,
+          "original_makespan": 2981.0,
+          "makespan": 4561.0,
+          "utilization": 0.497562580010532,
+          "load_balance": 0.38539918154760044
+        },
+        {
+          "name": "east_ods_eastjt_cont_jt_340000_安徽-1-20250925031726062",
+          "num_tasks": 34,
+          "num_deps": 33,
+          "original_makespan": 1039.0,
+          "makespan": 2033.0,
+          "utilization": 0.5909618474310951,
+          "load_balance": 0.5318429682122291
+        },
+        {
+          "name": "east_eastjt_eastjt_end_36_450000_广西-1-20250925042753453",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 38.0,
+          "makespan": 68.8,
+          "utilization": 0.288574647887324,
+          "load_balance": 0.23170721953143764
+        },
+        {
+          "name": "east_ods_eastjt_cs_610000_陕西-1-20250924112407881",
+          "num_tasks": 23,
+          "num_deps": 23,
+          "original_makespan": 248.0,
+          "makespan": 283.0,
+          "utilization": 0.36534019818376345,
+          "load_balance": 0.42125996020577927
+        },
+        {
+          "name": "circ_ods_circgf_incr_cmds_330000_浙江_并行-1-20250925050353784",
+          "num_tasks": 21,
+          "num_deps": 28,
+          "original_makespan": 510.0,
+          "makespan": 897.2,
+          "utilization": 0.35786670413969723,
+          "load_balance": 0.46238607355757466
+        },
+        {
+          "name": "CIRC_PI【所有模块(36)_数据加工】(420000_湖北)-1-20250924100722356",
+          "num_tasks": 28,
+          "num_deps": 25,
+          "original_makespan": 773.0,
+          "makespan": 1174.0,
+          "utilization": 0.4499692746903373,
+          "load_balance": 0.5709044994281917
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_220000_吉林-1-20250925025001100",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 707.0,
+          "makespan": 865.4,
+          "utilization": 0.3457875443510268,
+          "load_balance": 0.08559297694466354
+        },
+        {
+          "name": "circ_circgf_ods_return_130000_河北-2-20250924050924633",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 426.0,
+          "makespan": 771.6,
+          "utilization": 0.3724734590506213,
+          "load_balance": 0.09965229418017227
+        },
+        {
+          "name": "circ_ods_circgf_cs_410000_河南_并行-1-20250925051855747",
+          "num_tasks": 21,
+          "num_deps": 20,
+          "original_makespan": 943.0,
+          "makespan": 1096.6,
+          "utilization": 0.4030973201804923,
+          "load_balance": 0.2315291273071039
+        },
+        {
+          "name": "circ_circgf_circgf_end_36_130000_河北-1-20250925082957904",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 139.0,
+          "makespan": 209.0,
+          "utilization": 0.3052167358334502,
+          "load_balance": 0.40809851597251984
+        },
+        {
+          "name": "circ_ods_circgf_incr_trans_range_430000_湖南_并行-1-20250925043741583",
+          "num_tasks": 30,
+          "num_deps": 29,
+          "original_makespan": 1260.0,
+          "makespan": 1788.4,
+          "utilization": 0.5619489123952308,
+          "load_balance": 0.45348959552623996
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_140000_山西-1-20250924030224088",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "original_makespan": 261.0,
+          "makespan": 429.4,
+          "utilization": 0.24380851552330052,
+          "load_balance": 0.31749848378990786
+        },
+        {
+          "name": "east_ods_eastjt_agent_230000_黑龙江-1-20250924030926116",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 487.0,
+          "makespan": 905.2,
+          "utilization": 0.5332530504608299,
+          "load_balance": 0.49794674887073187
+        }
+      ]
+    },
+    {
+      "algorithm": "RoundRobin",
+      "train_time": 0.0,
+      "test_results": [
+        {
+          "name": "east_ods_eastjt_agent_660000_重庆-1-20250925031026042",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 494.0,
+          "makespan": 602.0,
+          "utilization": 0.6561461794019934,
+          "load_balance": 0.7307252466241216
+        },
+        {
+          "name": "保单登记股份增量正式报送调度_230000_黑龙江-7-20250925043500920",
+          "num_tasks": 49,
+          "num_deps": 10,
+          "original_makespan": 14248.0,
+          "makespan": 11425.0,
+          "utilization": 0.25969365426695845,
+          "load_balance": 0.5845724956110687
+        },
+        {
+          "name": "circ_ods_circgf_cont_v8_340000_安徽_并行-2-20250924072421829",
+          "num_tasks": 23,
+          "num_deps": 22,
+          "original_makespan": 687.0,
+          "makespan": 1022.0,
+          "utilization": 0.54853228962818,
+          "load_balance": 0.46126477610317185
+        },
+        {
+          "name": "circ_ods_circgf_cont_dx_630000_青海_多批次_并行-1-20250924164356311",
+          "num_tasks": 37,
+          "num_deps": 16,
+          "original_makespan": 333.0,
+          "makespan": 442.0,
+          "utilization": 0.5244343891402715,
+          "load_balance": 0.4214430220321656
+        },
+        {
+          "name": "circ_circgf_ods_return_110000_北京_多批次_并行-5-20250924162813030",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 185.0,
+          "makespan": 297.0,
+          "utilization": 0.40538720538720535,
+          "load_balance": 0.013806527415114234
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_430000_湖南-1-20250925025000921",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 708.0,
+          "makespan": 791.0,
+          "utilization": 0.3812895069532238,
+          "load_balance": 0.08251564584348259
+        },
+        {
+          "name": "east_eastjt_ods_return_420000_湖北-1-20250924030654581",
+          "num_tasks": 13,
+          "num_deps": 13,
+          "original_makespan": 146.0,
+          "makespan": 174.0,
+          "utilization": 0.367816091954023,
+          "load_balance": 0.003766860243045289
+        },
+        {
+          "name": "【惠民保调度_36】【所有模块】_省份一部-1-20250924100721457",
+          "num_tasks": 12,
+          "num_deps": 0,
+          "original_makespan": 2981.0,
+          "makespan": 4423.0,
+          "utilization": 0.5092471173411711,
+          "load_balance": 0.4960454852036311
+        },
+        {
+          "name": "east_ods_eastjt_cont_jt_340000_安徽-1-20250925031726062",
+          "num_tasks": 34,
+          "num_deps": 33,
+          "original_makespan": 1039.0,
+          "makespan": 1761.0,
+          "utilization": 0.6727995457126632,
+          "load_balance": 0.7492555062447892
+        },
+        {
+          "name": "east_eastjt_eastjt_end_36_450000_广西-1-20250925042753453",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 38.0,
+          "makespan": 66.0,
+          "utilization": 0.3,
+          "load_balance": 0.4510028993252043
+        },
+        {
+          "name": "east_ods_eastjt_cs_610000_陕西-1-20250924112407881",
+          "num_tasks": 23,
+          "num_deps": 23,
+          "original_makespan": 248.0,
+          "makespan": 282.0,
+          "utilization": 0.3624113475177305,
+          "load_balance": 0.0898323109997261
+        },
+        {
+          "name": "circ_ods_circgf_incr_cmds_330000_浙江_并行-1-20250925050353784",
+          "num_tasks": 21,
+          "num_deps": 28,
+          "original_makespan": 510.0,
+          "makespan": 714.0,
+          "utilization": 0.4378151260504202,
+          "load_balance": 0.6237013809703047
+        },
+        {
+          "name": "CIRC_PI【所有模块(36)_数据加工】(420000_湖北)-1-20250924100722356",
+          "num_tasks": 28,
+          "num_deps": 25,
+          "original_makespan": 773.0,
+          "makespan": 957.0,
+          "utilization": 0.5473354231974922,
+          "load_balance": 0.8000264043890173
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_220000_吉林-1-20250925025001100",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 707.0,
+          "makespan": 826.0,
+          "utilization": 0.36077481840193704,
+          "load_balance": 0.0
+        },
+        {
+          "name": "circ_circgf_ods_return_130000_河北-2-20250924050924633",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 426.0,
+          "makespan": 756.0,
+          "utilization": 0.3664021164021164,
+          "load_balance": 0.04206199632374308
+        },
+        {
+          "name": "circ_ods_circgf_cs_410000_河南_并行-1-20250925051855747",
+          "num_tasks": 21,
+          "num_deps": 20,
+          "original_makespan": 943.0,
+          "makespan": 931.0,
+          "utilization": 0.46745435016111714,
+          "load_balance": 0.6752528297026543
+        },
+        {
+          "name": "circ_circgf_circgf_end_36_130000_河北-1-20250925082957904",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 139.0,
+          "makespan": 193.0,
+          "utilization": 0.3295336787564767,
+          "load_balance": 0.6467894067396485
+        },
+        {
+          "name": "circ_ods_circgf_incr_trans_range_430000_湖南_并行-1-20250925043741583",
+          "num_tasks": 30,
+          "num_deps": 29,
+          "original_makespan": 1260.0,
+          "makespan": 1672.0,
+          "utilization": 0.5950956937799043,
+          "load_balance": 0.551178688471031
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_140000_山西-1-20250924030224088",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "original_makespan": 261.0,
+          "makespan": 401.0,
+          "utilization": 0.2603491271820449,
+          "load_balance": 0.419739421909493
+        },
+        {
+          "name": "east_ods_eastjt_agent_230000_黑龙江-1-20250924030926116",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 487.0,
+          "makespan": 874.0,
+          "utilization": 0.5455377574370709,
+          "load_balance": 0.562476875848396
+        }
+      ]
+    },
+    {
+      "algorithm": "SJF",
+      "train_time": 0.0,
+      "test_results": [
+        {
+          "name": "east_ods_eastjt_agent_660000_重庆-1-20250925031026042",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 494.0,
+          "makespan": 495.0,
+          "utilization": 0.797979797979798,
+          "load_balance": 0.8381884321309674
+        },
+        {
+          "name": "保单登记股份增量正式报送调度_230000_黑龙江-7-20250925043500920",
+          "num_tasks": 49,
+          "num_deps": 10,
+          "original_makespan": 14248.0,
+          "makespan": 11561.0,
+          "utilization": 0.2566386990744745,
+          "load_balance": 0.7334136524669417
+        },
+        {
+          "name": "circ_ods_circgf_cont_v8_340000_安徽_并行-2-20250924072421829",
+          "num_tasks": 23,
+          "num_deps": 22,
+          "original_makespan": 687.0,
+          "makespan": 689.0,
+          "utilization": 0.813642960812772,
+          "load_balance": 0.8545282623102686
+        },
+        {
+          "name": "circ_ods_circgf_cont_dx_630000_青海_多批次_并行-1-20250924164356311",
+          "num_tasks": 37,
+          "num_deps": 16,
+          "original_makespan": 333.0,
+          "makespan": 419.0,
+          "utilization": 0.5532219570405728,
+          "load_balance": 0.47597068034779333
+        },
+        {
+          "name": "circ_circgf_ods_return_110000_北京_多批次_并行-5-20250924162813030",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 185.0,
+          "makespan": 190.0,
+          "utilization": 0.6336842105263157,
+          "load_balance": 0.5260217758114941
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_430000_湖南-1-20250925025000921",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 708.0,
+          "makespan": 790.0,
+          "utilization": 0.3817721518987342,
+          "load_balance": 0.12400906997959782
+        },
+        {
+          "name": "east_eastjt_ods_return_420000_湖北-1-20250924030654581",
+          "num_tasks": 13,
+          "num_deps": 13,
+          "original_makespan": 146.0,
+          "makespan": 174.0,
+          "utilization": 0.367816091954023,
+          "load_balance": 0.0
+        },
+        {
+          "name": "【惠民保调度_36】【所有模块】_省份一部-1-20250924100721457",
+          "num_tasks": 12,
+          "num_deps": 0,
+          "original_makespan": 2981.0,
+          "makespan": 2981.0,
+          "utilization": 0.7555853740355586,
+          "load_balance": 0.8152501525322686
+        },
+        {
+          "name": "east_ods_eastjt_cont_jt_340000_安徽-1-20250925031726062",
+          "num_tasks": 34,
+          "num_deps": 33,
+          "original_makespan": 1039.0,
+          "makespan": 1304.0,
+          "utilization": 0.9085889570552148,
+          "load_balance": 0.9587846415009679
+        },
+        {
+          "name": "east_eastjt_eastjt_end_36_450000_广西-1-20250925042753453",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 38.0,
+          "makespan": 66.0,
+          "utilization": 0.3,
+          "load_balance": 0.3600390278199128
+        },
+        {
+          "name": "east_ods_eastjt_cs_610000_陕西-1-20250924112407881",
+          "num_tasks": 23,
+          "num_deps": 23,
+          "original_makespan": 248.0,
+          "makespan": 235.0,
+          "utilization": 0.4348936170212766,
+          "load_balance": 0.6857652240834591
+        },
+        {
+          "name": "circ_ods_circgf_incr_cmds_330000_浙江_并行-1-20250925050353784",
+          "num_tasks": 21,
+          "num_deps": 28,
+          "original_makespan": 510.0,
+          "makespan": 658.0,
+          "utilization": 0.4750759878419453,
+          "load_balance": 0.8896357803193877
+        },
+        {
+          "name": "CIRC_PI【所有模块(36)_数据加工】(420000_湖北)-1-20250924100722356",
+          "num_tasks": 28,
+          "num_deps": 25,
+          "original_makespan": 773.0,
+          "makespan": 885.0,
+          "utilization": 0.591864406779661,
+          "load_balance": 0.8795863754942413
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_220000_吉林-1-20250925025001100",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 707.0,
+          "makespan": 819.0,
+          "utilization": 0.36385836385836384,
+          "load_balance": 0.06647455652526424
+        },
+        {
+          "name": "circ_circgf_ods_return_130000_河北-2-20250924050924633",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 426.0,
+          "makespan": 466.0,
+          "utilization": 0.5944206008583691,
+          "load_balance": 0.4944095198345222
+        },
+        {
+          "name": "circ_ods_circgf_cs_410000_河南_并行-1-20250925051855747",
+          "num_tasks": 21,
+          "num_deps": 20,
+          "original_makespan": 943.0,
+          "makespan": 931.0,
+          "utilization": 0.46745435016111714,
+          "load_balance": 0.7842401912059838
+        },
+        {
+          "name": "circ_circgf_circgf_end_36_130000_河北-1-20250925082957904",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 139.0,
+          "makespan": 193.0,
+          "utilization": 0.3295336787564767,
+          "load_balance": 0.8724184731125735
+        },
+        {
+          "name": "circ_ods_circgf_incr_trans_range_430000_湖南_并行-1-20250925043741583",
+          "num_tasks": 30,
+          "num_deps": 29,
+          "original_makespan": 1260.0,
+          "makespan": 1642.0,
+          "utilization": 0.6059683313032886,
+          "load_balance": 0.5843922768390589
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_140000_山西-1-20250924030224088",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "original_makespan": 261.0,
+          "makespan": 401.0,
+          "utilization": 0.2603491271820449,
+          "load_balance": 0.4098932716181592
+        },
+        {
+          "name": "east_ods_eastjt_agent_230000_黑龙江-1-20250924030926116",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 487.0,
+          "makespan": 565.0,
+          "utilization": 0.8438938053097346,
+          "load_balance": 0.9504855850351508
+        }
+      ]
+    },
+    {
+      "algorithm": "EFT",
+      "train_time": 0.0,
+      "test_results": [
+        {
+          "name": "east_ods_eastjt_agent_660000_重庆-1-20250925031026042",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 494.0,
+          "makespan": 495.0,
+          "utilization": 0.797979797979798,
+          "load_balance": 0.8381884321309674
+        },
+        {
+          "name": "保单登记股份增量正式报送调度_230000_黑龙江-7-20250925043500920",
+          "num_tasks": 49,
+          "num_deps": 10,
+          "original_makespan": 14248.0,
+          "makespan": 11561.0,
+          "utilization": 0.2566386990744745,
+          "load_balance": 0.7334136524669417
+        },
+        {
+          "name": "circ_ods_circgf_cont_v8_340000_安徽_并行-2-20250924072421829",
+          "num_tasks": 23,
+          "num_deps": 22,
+          "original_makespan": 687.0,
+          "makespan": 689.0,
+          "utilization": 0.813642960812772,
+          "load_balance": 0.8545282623102686
+        },
+        {
+          "name": "circ_ods_circgf_cont_dx_630000_青海_多批次_并行-1-20250924164356311",
+          "num_tasks": 37,
+          "num_deps": 16,
+          "original_makespan": 333.0,
+          "makespan": 419.0,
+          "utilization": 0.5532219570405728,
+          "load_balance": 0.47597068034779333
+        },
+        {
+          "name": "circ_circgf_ods_return_110000_北京_多批次_并行-5-20250924162813030",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 185.0,
+          "makespan": 190.0,
+          "utilization": 0.6336842105263157,
+          "load_balance": 0.5260217758114941
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_430000_湖南-1-20250925025000921",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 708.0,
+          "makespan": 790.0,
+          "utilization": 0.3817721518987342,
+          "load_balance": 0.12400906997959782
+        },
+        {
+          "name": "east_eastjt_ods_return_420000_湖北-1-20250924030654581",
+          "num_tasks": 13,
+          "num_deps": 13,
+          "original_makespan": 146.0,
+          "makespan": 174.0,
+          "utilization": 0.367816091954023,
+          "load_balance": 0.0
+        },
+        {
+          "name": "【惠民保调度_36】【所有模块】_省份一部-1-20250924100721457",
+          "num_tasks": 12,
+          "num_deps": 0,
+          "original_makespan": 2981.0,
+          "makespan": 2981.0,
+          "utilization": 0.7555853740355586,
+          "load_balance": 0.8152501525322686
+        },
+        {
+          "name": "east_ods_eastjt_cont_jt_340000_安徽-1-20250925031726062",
+          "num_tasks": 34,
+          "num_deps": 33,
+          "original_makespan": 1039.0,
+          "makespan": 1304.0,
+          "utilization": 0.9085889570552148,
+          "load_balance": 0.9587846415009679
+        },
+        {
+          "name": "east_eastjt_eastjt_end_36_450000_广西-1-20250925042753453",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 38.0,
+          "makespan": 66.0,
+          "utilization": 0.3,
+          "load_balance": 0.3600390278199128
+        },
+        {
+          "name": "east_ods_eastjt_cs_610000_陕西-1-20250924112407881",
+          "num_tasks": 23,
+          "num_deps": 23,
+          "original_makespan": 248.0,
+          "makespan": 235.0,
+          "utilization": 0.4348936170212766,
+          "load_balance": 0.6857652240834591
+        },
+        {
+          "name": "circ_ods_circgf_incr_cmds_330000_浙江_并行-1-20250925050353784",
+          "num_tasks": 21,
+          "num_deps": 28,
+          "original_makespan": 510.0,
+          "makespan": 658.0,
+          "utilization": 0.4750759878419453,
+          "load_balance": 0.8896357803193877
+        },
+        {
+          "name": "CIRC_PI【所有模块(36)_数据加工】(420000_湖北)-1-20250924100722356",
+          "num_tasks": 28,
+          "num_deps": 25,
+          "original_makespan": 773.0,
+          "makespan": 885.0,
+          "utilization": 0.591864406779661,
+          "load_balance": 0.8795863754942413
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_220000_吉林-1-20250925025001100",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 707.0,
+          "makespan": 819.0,
+          "utilization": 0.36385836385836384,
+          "load_balance": 0.06647455652526424
+        },
+        {
+          "name": "circ_circgf_ods_return_130000_河北-2-20250924050924633",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 426.0,
+          "makespan": 466.0,
+          "utilization": 0.5944206008583691,
+          "load_balance": 0.4944095198345222
+        },
+        {
+          "name": "circ_ods_circgf_cs_410000_河南_并行-1-20250925051855747",
+          "num_tasks": 21,
+          "num_deps": 20,
+          "original_makespan": 943.0,
+          "makespan": 931.0,
+          "utilization": 0.46745435016111714,
+          "load_balance": 0.7842401912059838
+        },
+        {
+          "name": "circ_circgf_circgf_end_36_130000_河北-1-20250925082957904",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 139.0,
+          "makespan": 193.0,
+          "utilization": 0.3295336787564767,
+          "load_balance": 0.8724184731125735
+        },
+        {
+          "name": "circ_ods_circgf_incr_trans_range_430000_湖南_并行-1-20250925043741583",
+          "num_tasks": 30,
+          "num_deps": 29,
+          "original_makespan": 1260.0,
+          "makespan": 1642.0,
+          "utilization": 0.6059683313032886,
+          "load_balance": 0.5843922768390589
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_140000_山西-1-20250924030224088",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "original_makespan": 261.0,
+          "makespan": 401.0,
+          "utilization": 0.2603491271820449,
+          "load_balance": 0.4098932716181592
+        },
+        {
+          "name": "east_ods_eastjt_agent_230000_黑龙江-1-20250924030926116",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 487.0,
+          "makespan": 565.0,
+          "utilization": 0.8438938053097346,
+          "load_balance": 0.9504855850351508
+        }
+      ]
+    },
+    {
+      "algorithm": "CPOP",
+      "train_time": 0.0,
+      "test_results": [
+        {
+          "name": "east_ods_eastjt_agent_660000_重庆-1-20250925031026042",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 494.0,
+          "makespan": 619.0,
+          "utilization": 0.6381260096930533,
+          "load_balance": 0.6598425390772108
+        },
+        {
+          "name": "保单登记股份增量正式报送调度_230000_黑龙江-7-20250925043500920",
+          "num_tasks": 49,
+          "num_deps": 10,
+          "original_makespan": 14248.0,
+          "makespan": 11425.0,
+          "utilization": 0.25969365426695845,
+          "load_balance": 0.7371172644225102
+        },
+        {
+          "name": "circ_ods_circgf_cont_v8_340000_安徽_并行-2-20250924072421829",
+          "num_tasks": 23,
+          "num_deps": 22,
+          "original_makespan": 687.0,
+          "makespan": 876.0,
+          "utilization": 0.6399543378995434,
+          "load_balance": 0.5736485272043389
+        },
+        {
+          "name": "circ_ods_circgf_cont_dx_630000_青海_多批次_并行-1-20250924164356311",
+          "num_tasks": 37,
+          "num_deps": 16,
+          "original_makespan": 333.0,
+          "makespan": 418.0,
+          "utilization": 0.5545454545454546,
+          "load_balance": 0.47506227171624327
+        },
+        {
+          "name": "circ_circgf_ods_return_110000_北京_多批次_并行-5-20250924162813030",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 185.0,
+          "makespan": 361.0,
+          "utilization": 0.3335180055401662,
+          "load_balance": 0.0
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_430000_湖南-1-20250925025000921",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 708.0,
+          "makespan": 892.0,
+          "utilization": 0.3381165919282511,
+          "load_balance": 0.1678640925252115
+        },
+        {
+          "name": "east_eastjt_ods_return_420000_湖北-1-20250924030654581",
+          "num_tasks": 13,
+          "num_deps": 13,
+          "original_makespan": 146.0,
+          "makespan": 174.0,
+          "utilization": 0.367816091954023,
+          "load_balance": 0.0
+        },
+        {
+          "name": "【惠民保调度_36】【所有模块】_省份一部-1-20250924100721457",
+          "num_tasks": 12,
+          "num_deps": 0,
+          "original_makespan": 2981.0,
+          "makespan": 5334.0,
+          "utilization": 0.42227221597300335,
+          "load_balance": 0.31583171337643234
+        },
+        {
+          "name": "east_ods_eastjt_cont_jt_340000_安徽-1-20250925031726062",
+          "num_tasks": 34,
+          "num_deps": 33,
+          "original_makespan": 1039.0,
+          "makespan": 1839.0,
+          "utilization": 0.6442631865144101,
+          "load_balance": 0.6028174058027354
+        },
+        {
+          "name": "east_eastjt_eastjt_end_36_450000_广西-1-20250925042753453",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 38.0,
+          "makespan": 73.0,
+          "utilization": 0.27123287671232876,
+          "load_balance": 0.45566894604818264
+        },
+        {
+          "name": "east_ods_eastjt_cs_610000_陕西-1-20250924112407881",
+          "num_tasks": 23,
+          "num_deps": 23,
+          "original_makespan": 248.0,
+          "makespan": 282.0,
+          "utilization": 0.3624113475177305,
+          "load_balance": 0.5015582201925085
+        },
+        {
+          "name": "circ_ods_circgf_incr_cmds_330000_浙江_并行-1-20250925050353784",
+          "num_tasks": 21,
+          "num_deps": 28,
+          "original_makespan": 510.0,
+          "makespan": 675.0,
+          "utilization": 0.46311111111111114,
+          "load_balance": 0.7461407191005213
+        },
+        {
+          "name": "CIRC_PI【所有模块(36)_数据加工】(420000_湖北)-1-20250924100722356",
+          "num_tasks": 28,
+          "num_deps": 25,
+          "original_makespan": 773.0,
+          "makespan": 1021.0,
+          "utilization": 0.513026444662096,
+          "load_balance": 0.6494387866022486
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_220000_吉林-1-20250925025001100",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 707.0,
+          "makespan": 926.0,
+          "utilization": 0.32181425485961124,
+          "load_balance": 0.20275348861853648
+        },
+        {
+          "name": "circ_circgf_ods_return_130000_河北-2-20250924050924633",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 426.0,
+          "makespan": 756.0,
+          "utilization": 0.3664021164021164,
+          "load_balance": 0.0730664661512751
+        },
+        {
+          "name": "circ_ods_circgf_cs_410000_河南_并行-1-20250925051855747",
+          "num_tasks": 21,
+          "num_deps": 20,
+          "original_makespan": 943.0,
+          "makespan": 1083.0,
+          "utilization": 0.4018467220683287,
+          "load_balance": 0.6828564614259719
+        },
+        {
+          "name": "circ_circgf_circgf_end_36_130000_河北-1-20250925082957904",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 139.0,
+          "makespan": 197.0,
+          "utilization": 0.32284263959390863,
+          "load_balance": 0.9206948414281856
+        },
+        {
+          "name": "circ_ods_circgf_incr_trans_range_430000_湖南_并行-1-20250925043741583",
+          "num_tasks": 30,
+          "num_deps": 29,
+          "original_makespan": 1260.0,
+          "makespan": 1519.0,
+          "utilization": 0.6550362080315998,
+          "load_balance": 0.6132734358512497
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_140000_山西-1-20250924030224088",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "original_makespan": 261.0,
+          "makespan": 413.0,
+          "utilization": 0.25278450363196125,
+          "load_balance": 0.38453549802436693
+        },
+        {
+          "name": "east_ods_eastjt_agent_230000_黑龙江-1-20250924030926116",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 487.0,
+          "makespan": 819.0,
+          "utilization": 0.5821733821733822,
+          "load_balance": 0.7594409365443173
+        }
+      ]
+    },
+    {
+      "algorithm": "原始 FE-IDDQN",
+      "train_time": 2859.4304571151733,
+      "test_results": [
+        {
+          "name": "east_ods_eastjt_agent_660000_重庆-1-20250925031026042",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 494.0,
+          "makespan": 1484.4,
+          "utilization": 0.2748539449334605,
+          "load_balance": 0.0
+        },
+        {
+          "name": "保单登记股份增量正式报送调度_230000_黑龙江-7-20250925043500920",
+          "num_tasks": 49,
+          "num_deps": 10,
+          "original_makespan": 14248.0,
+          "makespan": 13518.2,
+          "utilization": 0.2209805756018758,
+          "load_balance": 0.0
+        },
+        {
+          "name": "circ_ods_circgf_cont_v8_340000_安徽_并行-2-20250924072421829",
+          "num_tasks": 23,
+          "num_deps": 22,
+          "original_makespan": 687.0,
+          "makespan": 2234.4,
+          "utilization": 0.2543228957085431,
+          "load_balance": 0.0
+        },
+        {
+          "name": "circ_ods_circgf_cont_dx_630000_青海_多批次_并行-1-20250924164356311",
+          "num_tasks": 37,
+          "num_deps": 16,
+          "original_makespan": 333.0,
+          "makespan": 780.0,
+          "utilization": 0.31270208449175785,
+          "load_balance": 0.018315804191802475
+        },
+        {
+          "name": "circ_circgf_ods_return_110000_北京_多批次_并行-5-20250924162813030",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 185.0,
+          "makespan": 459.2,
+          "utilization": 0.267303144654088,
+          "load_balance": 0.0
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_430000_湖南-1-20250925025000921",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 708.0,
+          "makespan": 1386.4,
+          "utilization": 0.2262770602991731,
+          "load_balance": 0.0
+        },
+        {
+          "name": "east_eastjt_ods_return_420000_湖北-1-20250924030654581",
+          "num_tasks": 13,
+          "num_deps": 13,
+          "original_makespan": 146.0,
+          "makespan": 180.0,
+          "utilization": 0.35555555555555557,
+          "load_balance": 0.0
+        },
+        {
+          "name": "【惠民保调度_36】【所有模块】_省份一部-1-20250924100721457",
+          "num_tasks": 12,
+          "num_deps": 0,
+          "original_makespan": 2981.0,
+          "makespan": 8090.8,
+          "utilization": 0.27905393450679267,
+          "load_balance": 0.0
+        },
+        {
+          "name": "east_ods_eastjt_cont_jt_340000_安徽-1-20250925031726062",
+          "num_tasks": 34,
+          "num_deps": 33,
+          "original_makespan": 1039.0,
+          "makespan": 3790.0,
+          "utilization": 0.335574380178601,
+          "load_balance": 0.011311891823667231
+        },
+        {
+          "name": "east_eastjt_eastjt_end_36_450000_广西-1-20250925042753453",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 38.0,
+          "makespan": 80.2,
+          "utilization": 0.24822164666082308,
+          "load_balance": 0.1154793135609847
+        },
+        {
+          "name": "east_ods_eastjt_cs_610000_陕西-1-20250924112407881",
+          "num_tasks": 23,
+          "num_deps": 23,
+          "original_makespan": 248.0,
+          "makespan": 367.6,
+          "utilization": 0.28189650205738764,
+          "load_balance": 0.0
+        },
+        {
+          "name": "circ_ods_circgf_incr_cmds_330000_浙江_并行-1-20250925050353784",
+          "num_tasks": 21,
+          "num_deps": 28,
+          "original_makespan": 510.0,
+          "makespan": 1408.0,
+          "utilization": 0.22208326429163217,
+          "load_balance": 0.0
+        },
+        {
+          "name": "CIRC_PI【所有模块(36)_数据加工】(420000_湖北)-1-20250924100722356",
+          "num_tasks": 28,
+          "num_deps": 25,
+          "original_makespan": 773.0,
+          "makespan": 1667.0,
+          "utilization": 0.3169659273391166,
+          "load_balance": 0.015236972646641589
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_220000_吉林-1-20250925025001100",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 707.0,
+          "makespan": 901.2,
+          "utilization": 0.3306702825882058,
+          "load_balance": 0.009105052341884856
+        },
+        {
+          "name": "circ_circgf_ods_return_130000_河北-2-20250924050924633",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 426.0,
+          "makespan": 1054.6,
+          "utilization": 0.26773559837309946,
+          "load_balance": 0.0
+        },
+        {
+          "name": "circ_ods_circgf_cs_410000_河南_并行-1-20250925051855747",
+          "num_tasks": 21,
+          "num_deps": 20,
+          "original_makespan": 943.0,
+          "makespan": 1344.8,
+          "utilization": 0.3325203492160014,
+          "load_balance": 0.0
+        },
+        {
+          "name": "circ_circgf_circgf_end_36_130000_河北-1-20250925082957904",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 139.0,
+          "makespan": 235.2,
+          "utilization": 0.27072465781808785,
+          "load_balance": 0.08032133903991681
+        },
+        {
+          "name": "circ_ods_circgf_incr_trans_range_430000_湖南_并行-1-20250925043741583",
+          "num_tasks": 30,
+          "num_deps": 29,
+          "original_makespan": 1260.0,
+          "makespan": 4625.8,
+          "utilization": 0.21529603919078272,
+          "load_balance": 0.0
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_140000_山西-1-20250924030224088",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "original_makespan": 261.0,
+          "makespan": 446.2,
+          "utilization": 0.2346772584952274,
+          "load_balance": 0.0
+        },
+        {
+          "name": "east_ods_eastjt_agent_230000_黑龙江-1-20250924030926116",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 487.0,
+          "makespan": 1561.6,
+          "utilization": 0.31087083236880797,
+          "load_balance": 0.0
+        }
+      ]
+    },
+    {
+      "algorithm": "GA-HPO FE-IDDQN",
+      "train_time": 694.2958452701569,
+      "test_results": [
+        {
+          "name": "east_ods_eastjt_agent_660000_重庆-1-20250925031026042",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 494.0,
+          "makespan": 751.8,
+          "utilization": 0.5838492620561837,
+          "load_balance": 0.5103101848155931
+        },
+        {
+          "name": "保单登记股份增量正式报送调度_230000_黑龙江-7-20250925043500920",
+          "num_tasks": 49,
+          "num_deps": 10,
+          "original_makespan": 14248.0,
+          "makespan": 11448.6,
+          "utilization": 0.2591627030202548,
+          "load_balance": 0.038425487925317324
+        },
+        {
+          "name": "circ_ods_circgf_cont_v8_340000_安徽_并行-2-20250924072421829",
+          "num_tasks": 23,
+          "num_deps": 22,
+          "original_makespan": 687.0,
+          "makespan": 767.4,
+          "utilization": 0.7359904941483666,
+          "load_balance": 0.7082816111994803
+        },
+        {
+          "name": "circ_ods_circgf_cont_dx_630000_青海_多批次_并行-1-20250924164356311",
+          "num_tasks": 37,
+          "num_deps": 16,
+          "original_makespan": 333.0,
+          "makespan": 609.6,
+          "utilization": 0.4127734108125698,
+          "load_balance": 0.20099983238329394
+        },
+        {
+          "name": "circ_circgf_ods_return_110000_北京_多批次_并行-5-20250924162813030",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 185.0,
+          "makespan": 193.2,
+          "utilization": 0.6235995496129704,
+          "load_balance": 0.4882956867851676
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_430000_湖南-1-20250925025000921",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 708.0,
+          "makespan": 871.2,
+          "utilization": 0.3477171534815943,
+          "load_balance": 0.0
+        },
+        {
+          "name": "east_eastjt_ods_return_420000_湖北-1-20250924030654581",
+          "num_tasks": 13,
+          "num_deps": 13,
+          "original_makespan": 146.0,
+          "makespan": 177.2,
+          "utilization": 0.3613171962983356,
+          "load_balance": 0.0004693006076508466
+        },
+        {
+          "name": "【惠民保调度_36】【所有模块】_省份一部-1-20250924100721457",
+          "num_tasks": 12,
+          "num_deps": 0,
+          "original_makespan": 2981.0,
+          "makespan": 11262.0,
+          "utilization": 0.2,
+          "load_balance": 0.0
+        },
+        {
+          "name": "east_ods_eastjt_cont_jt_340000_安徽-1-20250925031726062",
+          "num_tasks": 34,
+          "num_deps": 33,
+          "original_makespan": 1039.0,
+          "makespan": 2673.0,
+          "utilization": 0.49625562070908635,
+          "load_balance": 0.36216392408937675
+        },
+        {
+          "name": "east_eastjt_eastjt_end_36_450000_广西-1-20250925042753453",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 38.0,
+          "makespan": 66.0,
+          "utilization": 0.3,
+          "load_balance": 0.37217465820566087
+        },
+        {
+          "name": "east_ods_eastjt_cs_610000_陕西-1-20250924112407881",
+          "num_tasks": 23,
+          "num_deps": 23,
+          "original_makespan": 248.0,
+          "makespan": 261.8,
+          "utilization": 0.39546583731336404,
+          "load_balance": 0.3283682370857196
+        },
+        {
+          "name": "circ_ods_circgf_incr_cmds_330000_浙江_并行-1-20250925050353784",
+          "num_tasks": 21,
+          "num_deps": 28,
+          "original_makespan": 510.0,
+          "makespan": 742.4,
+          "utilization": 0.42261592845749973,
+          "load_balance": 0.4790100222215967
+        },
+        {
+          "name": "CIRC_PI【所有模块(36)_数据加工】(420000_湖北)-1-20250924100722356",
+          "num_tasks": 28,
+          "num_deps": 25,
+          "original_makespan": 773.0,
+          "makespan": 1088.2,
+          "utilization": 0.4942407317334358,
+          "load_balance": 0.3549067387817784
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_220000_吉林-1-20250925025001100",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "original_makespan": 707.0,
+          "makespan": 909.4,
+          "utilization": 0.32983685957484216,
+          "load_balance": 0.004967782468098325
+        },
+        {
+          "name": "circ_circgf_ods_return_130000_河北-2-20250924050924633",
+          "num_tasks": 28,
+          "num_deps": 29,
+          "original_makespan": 426.0,
+          "makespan": 454.0,
+          "utilization": 0.6103167848699763,
+          "load_balance": 0.485579925897766
+        },
+        {
+          "name": "circ_ods_circgf_cs_410000_河南_并行-1-20250925051855747",
+          "num_tasks": 21,
+          "num_deps": 20,
+          "original_makespan": 943.0,
+          "makespan": 964.8,
+          "utilization": 0.4516465689243131,
+          "load_balance": 0.3085855006715302
+        },
+        {
+          "name": "circ_circgf_circgf_end_36_130000_河北-1-20250925082957904",
+          "num_tasks": 15,
+          "num_deps": 14,
+          "original_makespan": 139.0,
+          "makespan": 193.6,
+          "utilization": 0.32851798679393357,
+          "load_balance": 0.32386733943213764
+        },
+        {
+          "name": "circ_ods_circgf_incr_trans_range_430000_湖南_并行-1-20250925043741583",
+          "num_tasks": 30,
+          "num_deps": 29,
+          "original_makespan": 1260.0,
+          "makespan": 1741.8,
+          "utilization": 0.5727787778946316,
+          "load_balance": 0.43478921131434045
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_140000_山西-1-20250924030224088",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "original_makespan": 261.0,
+          "makespan": 407.6,
+          "utilization": 0.25625767903612406,
+          "load_balance": 0.024881760544152254
+        },
+        {
+          "name": "east_ods_eastjt_agent_230000_黑龙江-1-20250924030926116",
+          "num_tasks": 38,
+          "num_deps": 37,
+          "original_makespan": 487.0,
+          "makespan": 724.2,
+          "utilization": 0.6690421813842006,
+          "load_balance": 0.700058042797668
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,375 @@
+{
+  "analysis_type": "parallelism_based",
+  "classification": {
+    "HIGH_PAR": {
+      "label": "density < 0.5",
+      "workflows": [
+        1,
+        3,
+        7
+      ]
+    },
+    "MEDIUM": {
+      "label": "0.5 <= density < 0.9",
+      "workflows": [
+        12
+      ]
+    },
+    "LOW_PAR": {
+      "label": "density >= 0.9",
+      "workflows": [
+        0,
+        2,
+        4,
+        5,
+        6,
+        8,
+        9,
+        10,
+        11,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    }
+  },
+  "per_workflow": [
+    {
+      "index": 0,
+      "density": 0.9737,
+      "category": "LOW_PAR",
+      "num_tasks": 38,
+      "num_deps": 37,
+      "name": "east_ods_eastjt_agent_660000_重庆-1-20250925031026042",
+      "sjf_makespan": 495.0,
+      "orig_makespan": 1484.4,
+      "gahpo_makespan": 751.8
+    },
+    {
+      "index": 1,
+      "density": 0.2041,
+      "category": "HIGH_PAR",
+      "num_tasks": 49,
+      "num_deps": 10,
+      "name": "保单登记股份增量正式报送调度_230000_黑龙江-7-20250925043500920",
+      "sjf_makespan": 11561.0,
+      "orig_makespan": 13518.2,
+      "gahpo_makespan": 11448.6
+    },
+    {
+      "index": 2,
+      "density": 0.9565,
+      "category": "LOW_PAR",
+      "num_tasks": 23,
+      "num_deps": 22,
+      "name": "circ_ods_circgf_cont_v8_340000_安徽_并行-2-20250924072421829",
+      "sjf_makespan": 689.0,
+      "orig_makespan": 2234.4,
+      "gahpo_makespan": 767.4
+    },
+    {
+      "index": 3,
+      "density": 0.4324,
+      "category": "HIGH_PAR",
+      "num_tasks": 37,
+      "num_deps": 16,
+      "name": "circ_ods_circgf_cont_dx_630000_青海_多批次_并行-1-20250924164356311",
+      "sjf_makespan": 419.0,
+      "orig_makespan": 780.0,
+      "gahpo_makespan": 609.6
+    },
+    {
+      "index": 4,
+      "density": 1.0357,
+      "category": "LOW_PAR",
+      "num_tasks": 28,
+      "num_deps": 29,
+      "name": "circ_circgf_ods_return_110000_北京_多批次_并行-5-20250924162813030",
+      "sjf_makespan": 190.0,
+      "orig_makespan": 459.2,
+      "gahpo_makespan": 193.2
+    },
+    {
+      "index": 5,
+      "density": 0.95,
+      "category": "LOW_PAR",
+      "num_tasks": 20,
+      "num_deps": 19,
+      "name": "east_ods_eastjt_incr_trans_range_430000_湖南-1-20250925025000921",
+      "sjf_makespan": 790.0,
+      "orig_makespan": 1386.4,
+      "gahpo_makespan": 871.2
+    },
+    {
+      "index": 6,
+      "density": 1.0,
+      "category": "LOW_PAR",
+      "num_tasks": 13,
+      "num_deps": 13,
+      "name": "east_eastjt_ods_return_420000_湖北-1-20250924030654581",
+      "sjf_makespan": 174.0,
+      "orig_makespan": 180.0,
+      "gahpo_makespan": 177.2
+    },
+    {
+      "index": 7,
+      "density": 0.0,
+      "category": "HIGH_PAR",
+      "num_tasks": 12,
+      "num_deps": 0,
+      "name": "【惠民保调度_36】【所有模块】_省份一部-1-20250924100721457",
+      "sjf_makespan": 2981.0,
+      "orig_makespan": 8090.8,
+      "gahpo_makespan": 11262.0
+    },
+    {
+      "index": 8,
+      "density": 0.9706,
+      "category": "LOW_PAR",
+      "num_tasks": 34,
+      "num_deps": 33,
+      "name": "east_ods_eastjt_cont_jt_340000_安徽-1-20250925031726062",
+      "sjf_makespan": 1304.0,
+      "orig_makespan": 3790.0,
+      "gahpo_makespan": 2673.0
+    },
+    {
+      "index": 9,
+      "density": 0.9333,
+      "category": "LOW_PAR",
+      "num_tasks": 15,
+      "num_deps": 14,
+      "name": "east_eastjt_eastjt_end_36_450000_广西-1-20250925042753453",
+      "sjf_makespan": 66.0,
+      "orig_makespan": 80.2,
+      "gahpo_makespan": 66.0
+    },
+    {
+      "index": 10,
+      "density": 1.0,
+      "category": "LOW_PAR",
+      "num_tasks": 23,
+      "num_deps": 23,
+      "name": "east_ods_eastjt_cs_610000_陕西-1-20250924112407881",
+      "sjf_makespan": 235.0,
+      "orig_makespan": 367.6,
+      "gahpo_makespan": 261.8
+    },
+    {
+      "index": 11,
+      "density": 1.3333,
+      "category": "LOW_PAR",
+      "num_tasks": 21,
+      "num_deps": 28,
+      "name": "circ_ods_circgf_incr_cmds_330000_浙江_并行-1-20250925050353784",
+      "sjf_makespan": 658.0,
+      "orig_makespan": 1408.0,
+      "gahpo_makespan": 742.4
+    },
+    {
+      "index": 12,
+      "density": 0.8929,
+      "category": "MEDIUM",
+      "num_tasks": 28,
+      "num_deps": 25,
+      "name": "CIRC_PI【所有模块(36)_数据加工】(420000_湖北)-1-20250924100722356",
+      "sjf_makespan": 885.0,
+      "orig_makespan": 1667.0,
+      "gahpo_makespan": 1088.2
+    },
+    {
+      "index": 13,
+      "density": 0.95,
+      "category": "LOW_PAR",
+      "num_tasks": 20,
+      "num_deps": 19,
+      "name": "east_ods_eastjt_incr_trans_range_220000_吉林-1-20250925025001100",
+      "sjf_makespan": 819.0,
+      "orig_makespan": 901.2,
+      "gahpo_makespan": 909.4
+    },
+    {
+      "index": 14,
+      "density": 1.0357,
+      "category": "LOW_PAR",
+      "num_tasks": 28,
+      "num_deps": 29,
+      "name": "circ_circgf_ods_return_130000_河北-2-20250924050924633",
+      "sjf_makespan": 466.0,
+      "orig_makespan": 1054.6,
+      "gahpo_makespan": 454.0
+    },
+    {
+      "index": 15,
+      "density": 0.9524,
+      "category": "LOW_PAR",
+      "num_tasks": 21,
+      "num_deps": 20,
+      "name": "circ_ods_circgf_cs_410000_河南_并行-1-20250925051855747",
+      "sjf_makespan": 931.0,
+      "orig_makespan": 1344.8,
+      "gahpo_makespan": 964.8
+    },
+    {
+      "index": 16,
+      "density": 0.9333,
+      "category": "LOW_PAR",
+      "num_tasks": 15,
+      "num_deps": 14,
+      "name": "circ_circgf_circgf_end_36_130000_河北-1-20250925082957904",
+      "sjf_makespan": 193.0,
+      "orig_makespan": 235.2,
+      "gahpo_makespan": 193.6
+    },
+    {
+      "index": 17,
+      "density": 0.9667,
+      "category": "LOW_PAR",
+      "num_tasks": 30,
+      "num_deps": 29,
+      "name": "circ_ods_circgf_incr_trans_range_430000_湖南_并行-1-20250925043741583",
+      "sjf_makespan": 1642.0,
+      "orig_makespan": 4625.8,
+      "gahpo_makespan": 1741.8
+    },
+    {
+      "index": 18,
+      "density": 1.1333,
+      "category": "LOW_PAR",
+      "num_tasks": 15,
+      "num_deps": 17,
+      "name": "east_ods_eastjt_incr_cmds_140000_山西-1-20250924030224088",
+      "sjf_makespan": 401.0,
+      "orig_makespan": 446.2,
+      "gahpo_makespan": 407.6
+    },
+    {
+      "index": 19,
+      "density": 0.9737,
+      "category": "LOW_PAR",
+      "num_tasks": 38,
+      "num_deps": 37,
+      "name": "east_ods_eastjt_agent_230000_黑龙江-1-20250924030926116",
+      "sjf_makespan": 565.0,
+      "orig_makespan": 1561.6,
+      "gahpo_makespan": 724.2
+    }
+  ],
+  "group_summary": {
+    "HIGH_PAR": {
+      "Random": {
+        "makespan": 5755.600000000001,
+        "util": 0.3981851377892611,
+        "lb": 0.3696202333448186
+      },
+      "RoundRobin": {
+        "makespan": 5430.0,
+        "util": 0.43112505358280034,
+        "lb": 0.5006870009489551
+      },
+      "SJF": {
+        "makespan": 4987.0,
+        "util": 0.5218153433835352,
+        "lb": 0.6748781617823344
+      },
+      "EFT": {
+        "makespan": 4987.0,
+        "util": 0.5218153433835352,
+        "lb": 0.6748781617823344
+      },
+      "CPOP": {
+        "makespan": 5725.666666666667,
+        "util": 0.4121704415951388,
+        "lb": 0.5093370831717287
+      },
+      "原始 FE-IDDQN": {
+        "makespan": 7463.0,
+        "util": 0.2709121982001421,
+        "lb": 0.006105268063934158
+      },
+      "GA-HPO FE-IDDQN": {
+        "makespan": 7773.400000000001,
+        "util": 0.2906453712776082,
+        "lb": 0.07980844010287043
+      }
+    },
+    "MEDIUM": {
+      "Random": {
+        "makespan": 1174.0,
+        "util": 0.4499692746903373,
+        "lb": 0.5709044994281917
+      },
+      "RoundRobin": {
+        "makespan": 957.0,
+        "util": 0.5473354231974922,
+        "lb": 0.8000264043890173
+      },
+      "SJF": {
+        "makespan": 885.0,
+        "util": 0.591864406779661,
+        "lb": 0.8795863754942413
+      },
+      "EFT": {
+        "makespan": 885.0,
+        "util": 0.591864406779661,
+        "lb": 0.8795863754942413
+      },
+      "CPOP": {
+        "makespan": 1021.0,
+        "util": 0.513026444662096,
+        "lb": 0.6494387866022486
+      },
+      "原始 FE-IDDQN": {
+        "makespan": 1667.0,
+        "util": 0.3169659273391166,
+        "lb": 0.015236972646641589
+      },
+      "GA-HPO FE-IDDQN": {
+        "makespan": 1088.2,
+        "util": 0.4942407317334358,
+        "lb": 0.3549067387817784
+      }
+    },
+    "LOW_PAR": {
+      "Random": {
+        "makespan": 786.0749999999999,
+        "util": 0.41515397145413246,
+        "lb": 0.30708737867355196
+      },
+      "RoundRobin": {
+        "makespan": 710.125,
+        "util": 0.4410840521703817,
+        "lb": 0.3814606482977454
+      },
+      "SJF": {
+        "makespan": 601.125,
+        "util": 0.5361832520324672,
+        "lb": 0.587455380507923
+      },
+      "EFT": {
+        "makespan": 601.125,
+        "util": 0.5361832520324672,
+        "lb": 0.587455380507923
+      },
+      "CPOP": {
+        "makespan": 719.0,
+        "util": 0.4350905866019703,
+        "lb": 0.45901009862466324
+      },
+      "原始 FE-IDDQN": {
+        "makespan": 1347.475,
+        "util": 0.2767864632743423,
+        "lb": 0.01351359979790335
+      },
+      "GA-HPO FE-IDDQN": {
+        "makespan": 743.7125000000001,
+        "util": 0.46782549253471384,
+        "lb": 0.3457376992584962
+      }
+    }
+  }
+}

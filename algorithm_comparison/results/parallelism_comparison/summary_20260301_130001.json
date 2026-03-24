@@ -1,0 +1,464 @@
+{
+  "config": {
+    "seed": 42,
+    "train_episodes": 1000,
+    "eval_episodes": 5,
+    "num_resources": 5,
+    "per_group_train": 15,
+    "per_group_test": 10
+  },
+  "groups": {
+    "HIGH_PARALLELISM": {
+      "train_count": 15,
+      "test_count": 10,
+      "avg_parallelism_ratio": 11.354045488647373,
+      "avg_serialization_ratio": 0.14916394235279684,
+      "results": [
+        {
+          "algorithm": "Random",
+          "avg_makespan": 623.3399999999999,
+          "std_makespan": 653.9214145445919,
+          "avg_utilization": 0.6087643150917045,
+          "avg_load_balance": 0.5822770047461271,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "RoundRobin",
+          "avg_makespan": 511.4,
+          "std_makespan": 552.2782269834653,
+          "avg_utilization": 0.7802828861708598,
+          "avg_load_balance": 0.8156392654139246,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "SJF",
+          "avg_makespan": 426.2,
+          "std_makespan": 460.5524508674337,
+          "avg_utilization": 0.8794404435274782,
+          "avg_load_balance": 0.9235607640595977,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "EFT",
+          "avg_makespan": 426.2,
+          "std_makespan": 460.5524508674337,
+          "avg_utilization": 0.8794404435274782,
+          "avg_load_balance": 0.9235607640595977,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "CPOP",
+          "avg_makespan": 506.8,
+          "std_makespan": 567.5090836277425,
+          "avg_utilization": 0.8049917665459153,
+          "avg_load_balance": 0.8298203766478782,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "Orig FE-IDDQN",
+          "avg_makespan": 1352.4999999999998,
+          "std_makespan": 1251.055673421451,
+          "avg_utilization": 0.24285269696645045,
+          "avg_load_balance": 0.014165400066365538,
+          "train_time": 2297.1476929187775
+        },
+        {
+          "algorithm": "GA-HPO FE-IDDQN",
+          "avg_makespan": 749.9,
+          "std_makespan": 900.5344868465615,
+          "avg_utilization": 0.5622657338988629,
+          "avg_load_balance": 0.4586004384643519,
+          "train_time": 402.0604748725891
+        }
+      ],
+      "per_workflow": [
+        {
+          "name": "east_ods_eastjt_agent_110000_北京-4-20250924112334485",
+          "num_tasks": 26,
+          "num_deps": 11,
+          "parallelism_ratio": 10.258064516129032,
+          "serialization_ratio": 0.15384615384615385,
+          "algorithm_results": {
+            "Random": 254.2,
+            "RoundRobin": 181.0,
+            "SJF": 152.0,
+            "EFT": 152.0,
+            "CPOP": 152.0,
+            "Orig FE-IDDQN": 623.4,
+            "GA-HPO FE-IDDQN": 182.0
+          }
+        },
+        {
+          "name": "circ_ods_circgf_claim_210000_辽宁_多批次_并行-1-20250924163649318",
+          "num_tasks": 33,
+          "num_deps": 12,
+          "parallelism_ratio": 15.06060606060606,
+          "serialization_ratio": 0.12121212121212122,
+          "algorithm_results": {
+            "Random": 154.4,
+            "RoundRobin": 123.0,
+            "SJF": 120.0,
+            "EFT": 120.0,
+            "CPOP": 123.0,
+            "Orig FE-IDDQN": 495.8,
+            "GA-HPO FE-IDDQN": 190.2
+          }
+        },
+        {
+          "name": "east_ods_eastjt_cont_jt_350000_福建-1-20250924031726140",
+          "num_tasks": 34,
+          "num_deps": 33,
+          "parallelism_ratio": 5.436432637571158,
+          "serialization_ratio": 0.17647058823529413,
+          "algorithm_results": {
+            "Random": 1880.8,
+            "RoundRobin": 1502.0,
+            "SJF": 1295.0,
+            "EFT": 1295.0,
+            "CPOP": 1598.0,
+            "Orig FE-IDDQN": 3487.4,
+            "GA-HPO FE-IDDQN": 1818.2
+          }
+        },
+        {
+          "name": "east_ods_eastjt_agent_340000_安徽-1-20250924112312452",
+          "num_tasks": 26,
+          "num_deps": 11,
+          "parallelism_ratio": 14.441176470588236,
+          "serialization_ratio": 0.15384615384615385,
+          "algorithm_results": {
+            "Random": 171.4,
+            "RoundRobin": 124.0,
+            "SJF": 120.0,
+            "EFT": 120.0,
+            "CPOP": 122.0,
+            "Orig FE-IDDQN": 489.4,
+            "GA-HPO FE-IDDQN": 160.0
+          }
+        },
+        {
+          "name": "circ_ods_circgf_cont_dx_650000_新疆_并行-1-20250925071640228",
+          "num_tasks": 33,
+          "num_deps": 32,
+          "parallelism_ratio": 5.323583180987203,
+          "serialization_ratio": 0.18181818181818182,
+          "algorithm_results": {
+            "Random": 1134.8,
+            "RoundRobin": 1204.0,
+            "SJF": 697.0,
+            "EFT": 697.0,
+            "CPOP": 977.0,
+            "Orig FE-IDDQN": 1668.2,
+            "GA-HPO FE-IDDQN": 1134.4
+          }
+        },
+        {
+          "name": "circ_ods_circgf_agent_130000_河北_多批次_并行-4-20250924164101051",
+          "num_tasks": 26,
+          "num_deps": 11,
+          "parallelism_ratio": 13.676470588235293,
+          "serialization_ratio": 0.15384615384615385,
+          "algorithm_results": {
+            "Random": 161.0,
+            "RoundRobin": 124.0,
+            "SJF": 94.0,
+            "EFT": 94.0,
+            "CPOP": 97.0,
+            "Orig FE-IDDQN": 464.2,
+            "GA-HPO FE-IDDQN": 252.2
+          }
+        },
+        {
+          "name": "east_ods_eastjt_cont_jt_530000_云南-1-20250924112323835",
+          "num_tasks": 34,
+          "num_deps": 13,
+          "parallelism_ratio": 13.46031746031746,
+          "serialization_ratio": 0.11764705882352941,
+          "algorithm_results": {
+            "Random": 255.0,
+            "RoundRobin": 184.0,
+            "SJF": 180.0,
+            "EFT": 180.0,
+            "CPOP": 210.0,
+            "Orig FE-IDDQN": 847.2,
+            "GA-HPO FE-IDDQN": 276.8
+          }
+        },
+        {
+          "name": "east_ods_eastjt_agent_360000_江西-1-20250924112312927",
+          "num_tasks": 26,
+          "num_deps": 11,
+          "parallelism_ratio": 15.323529411764707,
+          "serialization_ratio": 0.15384615384615385,
+          "algorithm_results": {
+            "Random": 177.6,
+            "RoundRobin": 125.0,
+            "SJF": 120.0,
+            "EFT": 120.0,
+            "CPOP": 122.0,
+            "Orig FE-IDDQN": 520.2,
+            "GA-HPO FE-IDDQN": 195.8
+          }
+        },
+        {
+          "name": "east_ods_eastjt_claim_220000_吉林-1-20250924112351865",
+          "num_tasks": 33,
+          "num_deps": 12,
+          "parallelism_ratio": 14.80952380952381,
+          "serialization_ratio": 0.12121212121212122,
+          "algorithm_results": {
+            "Random": 312.6,
+            "RoundRobin": 210.0,
+            "SJF": 210.0,
+            "EFT": 210.0,
+            "CPOP": 213.0,
+            "Orig FE-IDDQN": 919.8,
+            "GA-HPO FE-IDDQN": 330.0
+          }
+        },
+        {
+          "name": "circ_ods_circgf_cont_other_650000_新疆_并行-1-20250924074032474",
+          "num_tasks": 57,
+          "num_deps": 56,
+          "parallelism_ratio": 5.7507507507507505,
+          "serialization_ratio": 0.15789473684210525,
+          "algorithm_results": {
+            "Random": 1731.6,
+            "RoundRobin": 1337.0,
+            "SJF": 1274.0,
+            "EFT": 1274.0,
+            "CPOP": 1454.0,
+            "Orig FE-IDDQN": 4009.4,
+            "GA-HPO FE-IDDQN": 2959.4
+          }
+        }
+      ]
+    },
+    "LOW_PARALLELISM": {
+      "train_count": 15,
+      "test_count": 10,
+      "avg_parallelism_ratio": 1.5360897590405846,
+      "avg_serialization_ratio": 0.7210526315789473,
+      "results": [
+        {
+          "algorithm": "Random",
+          "avg_makespan": 465.08000000000004,
+          "std_makespan": 178.12820551501665,
+          "avg_utilization": 0.28382432014236764,
+          "avg_load_balance": 0.23703759139195818,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "RoundRobin",
+          "avg_makespan": 432.3,
+          "std_makespan": 184.43483944201,
+          "avg_utilization": 0.30690959726247424,
+          "avg_load_balance": 0.3276522200662115,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "SJF",
+          "avg_makespan": 431.6,
+          "std_makespan": 182.9465495711794,
+          "avg_utilization": 0.30721795180811695,
+          "avg_load_balance": 0.3877607319206994,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "EFT",
+          "avg_makespan": 431.6,
+          "std_makespan": 182.9465495711794,
+          "avg_utilization": 0.30721795180811695,
+          "avg_load_balance": 0.3877607319206994,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "CPOP",
+          "avg_makespan": 475.4,
+          "std_makespan": 208.3546015810546,
+          "avg_utilization": 0.27892967795382934,
+          "avg_load_balance": 0.38581686174514956,
+          "train_time": 0.0
+        },
+        {
+          "algorithm": "Orig FE-IDDQN",
+          "avg_makespan": 470.36,
+          "std_makespan": 188.7079818131708,
+          "avg_utilization": 0.2824767122680174,
+          "avg_load_balance": 0.026973295712751498,
+          "train_time": 2092.5523998737335
+        },
+        {
+          "algorithm": "GA-HPO FE-IDDQN",
+          "avg_makespan": 437.84,
+          "std_makespan": 179.58883706956846,
+          "avg_utilization": 0.3014680869326841,
+          "avg_load_balance": 0.14772273061984068,
+          "train_time": 291.03440499305725
+        }
+      ],
+      "per_workflow": [
+        {
+          "name": "east_eastjt_eastjt_end_updte_210000_辽宁-1-20250925040512336",
+          "num_tasks": 19,
+          "num_deps": 19,
+          "parallelism_ratio": 1.2337078651685394,
+          "serialization_ratio": 0.7368421052631579,
+          "algorithm_results": {
+            "Random": 446.0,
+            "RoundRobin": 445.0,
+            "SJF": 445.0,
+            "EFT": 445.0,
+            "CPOP": 445.0,
+            "Orig FE-IDDQN": 445.0,
+            "GA-HPO FE-IDDQN": 453.4
+          }
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_310000_上海-1-20250924111022424",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "parallelism_ratio": 1.7591973244147157,
+          "serialization_ratio": 0.7,
+          "algorithm_results": {
+            "Random": 379.6,
+            "RoundRobin": 299.0,
+            "SJF": 299.0,
+            "EFT": 299.0,
+            "CPOP": 323.0,
+            "Orig FE-IDDQN": 348.2,
+            "GA-HPO FE-IDDQN": 311.4
+          }
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_140000_山西-1-20250924111022835",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "parallelism_ratio": 1.8560885608856088,
+          "serialization_ratio": 0.7,
+          "algorithm_results": {
+            "Random": 365.2,
+            "RoundRobin": 271.0,
+            "SJF": 271.0,
+            "EFT": 271.0,
+            "CPOP": 292.0,
+            "Orig FE-IDDQN": 334.8,
+            "GA-HPO FE-IDDQN": 283.0
+          }
+        },
+        {
+          "name": "east_eastjt_eastjt_end_updte_420000_湖北-1-20250924114102952",
+          "num_tasks": 19,
+          "num_deps": 19,
+          "parallelism_ratio": 1.330827067669173,
+          "serialization_ratio": 0.7368421052631579,
+          "algorithm_results": {
+            "Random": 287.6,
+            "RoundRobin": 266.0,
+            "SJF": 266.0,
+            "EFT": 266.0,
+            "CPOP": 291.0,
+            "Orig FE-IDDQN": 266.8,
+            "GA-HPO FE-IDDQN": 277.8
+          }
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_150000_内蒙-1-20250924111618416",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "parallelism_ratio": 1.6161616161616161,
+          "serialization_ratio": 0.7333333333333333,
+          "algorithm_results": {
+            "Random": 306.4,
+            "RoundRobin": 297.0,
+            "SJF": 297.0,
+            "EFT": 297.0,
+            "CPOP": 388.0,
+            "Orig FE-IDDQN": 335.2,
+            "GA-HPO FE-IDDQN": 301.4
+          }
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_320000_江苏-1-20250925030302946",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "parallelism_ratio": 1.3041362530413625,
+          "serialization_ratio": 0.7333333333333333,
+          "algorithm_results": {
+            "Random": 442.6,
+            "RoundRobin": 411.0,
+            "SJF": 411.0,
+            "EFT": 411.0,
+            "CPOP": 452.0,
+            "Orig FE-IDDQN": 487.0,
+            "GA-HPO FE-IDDQN": 416.4
+          }
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_370000_山东-1-20250924025001013",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "parallelism_ratio": 1.9017735334242838,
+          "serialization_ratio": 0.7,
+          "algorithm_results": {
+            "Random": 754.0,
+            "RoundRobin": 733.0,
+            "SJF": 733.0,
+            "EFT": 733.0,
+            "CPOP": 824.0,
+            "Orig FE-IDDQN": 733.0,
+            "GA-HPO FE-IDDQN": 733.0
+          }
+        },
+        {
+          "name": "east_ods_eastjt_incr_trans_range_220000_吉林-1-20250925025001100",
+          "num_tasks": 20,
+          "num_deps": 19,
+          "parallelism_ratio": 1.8192918192918193,
+          "serialization_ratio": 0.7,
+          "algorithm_results": {
+            "Random": 853.2,
+            "RoundRobin": 826.0,
+            "SJF": 819.0,
+            "EFT": 819.0,
+            "CPOP": 926.0,
+            "Orig FE-IDDQN": 902.0,
+            "GA-HPO FE-IDDQN": 819.8
+          }
+        },
+        {
+          "name": "east_ods_eastjt_incr_cmds_140000_山西-1-20250924030224088",
+          "num_tasks": 15,
+          "num_deps": 17,
+          "parallelism_ratio": 1.3017456359102244,
+          "serialization_ratio": 0.7333333333333333,
+          "algorithm_results": {
+            "Random": 438.6,
+            "RoundRobin": 401.0,
+            "SJF": 401.0,
+            "EFT": 401.0,
+            "CPOP": 413.0,
+            "Orig FE-IDDQN": 464.0,
+            "GA-HPO FE-IDDQN": 402.2
+          }
+        },
+        {
+          "name": "east_eastjt_eastjt_end_updte_350000_福建-1-20250925040731501",
+          "num_tasks": 19,
+          "num_deps": 19,
+          "parallelism_ratio": 1.2379679144385027,
+          "serialization_ratio": 0.7368421052631579,
+          "algorithm_results": {
+            "Random": 377.6,
+            "RoundRobin": 374.0,
+            "SJF": 374.0,
+            "EFT": 374.0,
+            "CPOP": 400.0,
+            "Orig FE-IDDQN": 387.6,
+            "GA-HPO FE-IDDQN": 380.0
+          }
+        }
+      ]
+    }
+  }
+}
