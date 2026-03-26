@@ -23,11 +23,13 @@ import os
 import sys
 import time
 import random
+import math
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 
 import numpy as np
+import pandas as pd
 import torch
 
 # ─── 项目内部导入 ─── #
@@ -35,6 +37,8 @@ from models.enhanced_fe_iddqn import EnhancedFE_IDDQN, EnhancedFE_IDDQN_Config
 from models.ga_optimizer import GAArchitectureOptimizer, GAConfig
 from models.dqn_hpo_optimizer import DQNHPOptimizer, DQNHPOConfig
 from environment.enhanced_workflow_simulator import EnhancedWorkflowSimulator
+from environment.historical_replay_simulator import HistoricalReplaySimulator as LogReplaySimulator
+from baselines.traditional_schedulers import FIFOScheduler, SJFScheduler, HEFTScheduler
 
 
 # ─────────────────── 工具函数 ─────────────────── #
@@ -111,6 +115,352 @@ def make_env(num_tasks=20, num_resources=5, seed=42):
     return EnhancedWorkflowSimulator(tasks, resources, deps)
 
 
+def _normalize_state_for_agent(state: Any,
+                               task_input_dim: int,
+                               resource_input_dim: int
+                               ) -> Tuple[Dict[str, np.ndarray], np.ndarray,
+                                          np.ndarray, Optional[np.ndarray],
+                                          Optional[np.ndarray], Optional[np.ndarray]]:
+    """将不同环境的状态统一为agent可消费格式"""
+    if isinstance(state, dict):
+        task_feats = np.asarray(
+            state.get('task_features', np.zeros((1, task_input_dim), dtype=np.float32)),
+            dtype=np.float32
+        )
+        res_feats = np.asarray(
+            state.get('resource_features', np.zeros((1, resource_input_dim), dtype=np.float32)),
+            dtype=np.float32
+        )
+
+        if task_feats.ndim == 3 and task_feats.shape[0] == 1:
+            task_feats = task_feats[0]
+        if res_feats.ndim == 3 and res_feats.shape[0] == 1:
+            res_feats = res_feats[0]
+
+        global_feats = np.asarray(state.get('global_features', np.array([], dtype=np.float32)),
+                                  dtype=np.float32)
+        agent_state = {
+            'task_features': task_feats,
+            'resource_features': res_feats,
+            'global_features': global_feats
+        }
+        return (
+            agent_state,
+            task_feats,
+            res_feats,
+            state.get('adj_matrix', None),
+            state.get('node_depths', None),
+            state.get('critical_path_mask', None)
+        )
+
+    if isinstance(state, (tuple, list)) and len(state) >= 2:
+        task_feats = np.asarray(state[0], dtype=np.float32)
+        res_feats = np.asarray(state[1], dtype=np.float32)
+
+        if task_feats.ndim == 3 and task_feats.shape[0] == 1:
+            task_feats = task_feats[0]
+        if res_feats.ndim == 3 and res_feats.shape[0] == 1:
+            res_feats = res_feats[0]
+
+        agent_state = {
+            'task_features': task_feats,
+            'resource_features': res_feats,
+            'global_features': np.array([], dtype=np.float32)
+        }
+        return agent_state, task_feats, res_feats, None, None, None
+
+    raise TypeError(f"Unsupported state type: {type(state)}")
+
+
+def _extract_env_metrics(env: Any, info: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
+    """统一提取环境指标"""
+    info = info or {}
+
+    if hasattr(env, 'get_scheduling_result'):
+        result = env.get_scheduling_result()
+        return {
+            'makespan': float(result.get('makespan', info.get('makespan', 0.0))),
+            'resource_utilization': float(result.get('resource_utilization', info.get('utilization', 0.0))),
+            'load_balance': float(result.get('load_balance', info.get('load_balance', 0.0)))
+        }
+
+    makespan = float(env.get_makespan()) if hasattr(env, 'get_makespan') else float(info.get('makespan', 0.0))
+    utilization = float(env.get_resource_utilization()) if hasattr(env, 'get_resource_utilization') else float(info.get('utilization', 0.0))
+    load_balance = float(env.get_load_balance_score()) if hasattr(env, 'get_load_balance_score') else float(info.get('load_balance', 0.0))
+
+    return {
+        'makespan': makespan,
+        'resource_utilization': utilization,
+        'load_balance': load_balance
+    }
+
+
+def _reset_env_and_get_state(env: Any) -> Any:
+    """兼容不同环境reset返回风格，统一返回state"""
+    state = env.reset()
+    if state is None and hasattr(env, 'get_state'):
+        state = env.get_state()
+    return state
+
+
+def _read_first_existing_csv(base_dir: Path, candidate_names: List[str]) -> pd.DataFrame:
+    """按候选文件名顺序读取首个存在的CSV"""
+    for name in candidate_names:
+        candidate = base_dir / name
+        if candidate.exists():
+            return pd.read_csv(candidate)
+    raise FileNotFoundError(f"No CSV found in {base_dir} for candidates: {candidate_names}")
+
+
+def load_replay_dataframes(data_dir: Path) -> Dict[str, pd.DataFrame]:
+    """加载真实日志数据并返回DataFrame字典"""
+    return {
+        'process_definition': _read_first_existing_csv(data_dir, [
+            'oceanbase_t_ds_process_definition.csv',
+            '__B_t_ds_process_definition.csv'
+        ]),
+        'process_instance': _read_first_existing_csv(data_dir, [
+            'gaussdb_t_ds_process_instance_a.csv',
+            'Commercial_B_t_ds_process_instance.csv',
+            '__B_t_ds_process_instance.csv'
+        ]),
+        'task_definition': _read_first_existing_csv(data_dir, [
+            'oceanbase_t_ds_task_definition.csv',
+            '__B_t_ds_task_definition.csv'
+        ]),
+        'task_instance': _read_first_existing_csv(data_dir, [
+            'gaussdb_t_ds_task_instance_a.csv',
+            'Commercial_B_t_ds_task_instance.csv',
+            '__B_t_ds_task_instance.csv'
+        ]),
+        'process_task_relation': _read_first_existing_csv(data_dir, [
+            'oceanbase_t_ds_process_task_relation.csv',
+            '__B_t_ds_process_task_relation.csv'
+        ])
+    }
+
+
+def make_replay_envs(data_dir: Path,
+                     train_ratio: float,
+                     logger: logging.Logger
+                     ) -> Tuple[LogReplaySimulator, LogReplaySimulator, Dict[str, Any]]:
+    """创建训练/验证回放环境"""
+    data = load_replay_dataframes(data_dir)
+
+    process_instances = data['process_instance'].copy()
+    task_instances = data['task_instance'].copy()
+    task_definitions = data['task_definition'].copy()
+    process_task_relations = data['process_task_relation'].copy()
+
+    processes_with_tasks = set(task_instances['process_instance_id'].unique())
+    successful = process_instances[
+        (process_instances['state'] == 7) &
+        (process_instances['id'].isin(processes_with_tasks))
+    ].sort_values('start_time').reset_index(drop=True)
+
+    if successful.empty:
+        raise ValueError('No successful process instances with tasks found in replay data.')
+
+    split_idx = int(len(successful) * train_ratio)
+    split_idx = max(1, min(split_idx, len(successful) - 1)) if len(successful) > 1 else 1
+
+    train_ids = set(successful.iloc[:split_idx]['id'].tolist())
+    val_ids = set(successful.iloc[split_idx:]['id'].tolist()) if len(successful) > 1 else train_ids
+
+    if not val_ids:
+        val_ids = train_ids
+
+    train_process_df = process_instances[process_instances['id'].isin(train_ids)].copy()
+    train_task_df = task_instances[task_instances['process_instance_id'].isin(train_ids)].copy()
+
+    val_process_df = process_instances[process_instances['id'].isin(val_ids)].copy()
+    val_task_df = task_instances[task_instances['process_instance_id'].isin(val_ids)].copy()
+
+    train_env = LogReplaySimulator(
+        process_instances=train_process_df,
+        task_instances=train_task_df,
+        task_definitions=task_definitions,
+        process_task_relations=process_task_relations
+    )
+    val_env = LogReplaySimulator(
+        process_instances=val_process_df,
+        task_instances=val_task_df,
+        task_definitions=task_definitions,
+        process_task_relations=process_task_relations
+    )
+
+    meta = {
+        'data_dir': str(data_dir),
+        'total_successful_processes': int(len(successful)),
+        'train_processes': int(len(train_ids)),
+        'val_processes': int(len(val_ids)),
+        'train_tasks': int(len(train_task_df)),
+        'val_tasks': int(len(val_task_df))
+    }
+    logger.info(f"Replay data loaded: {meta}")
+    return train_env, val_env, meta
+
+
+def _extract_replay_snapshot_for_baselines(env: LogReplaySimulator) -> Tuple[List[Dict], List[Dict], List[Tuple[int, int]]]:
+    """从回放环境中抽取单个流程快照用于传统算法公平对比"""
+    if not hasattr(env, 'current_process_tasks') or env.current_process_tasks is None or env.current_process_tasks.empty:
+        env.reset()
+
+    task_df = env.current_process_tasks
+    tasks: List[Dict] = []
+    code_to_task_id: Dict[Any, int] = {}
+
+    for _, row in task_df.iterrows():
+        task_id = int(row['id'])
+        task_code = row.get('task_code', row.get('task_definition_code', None))
+        if pd.notna(task_code):
+            code_to_task_id[int(task_code)] = task_id
+
+        tasks.append({
+            'id': task_id,
+            'name': row.get('name', f'task_{task_id}'),
+            'duration': float(env._estimate_task_duration(row)),
+            'cpu_req': float(env._estimate_task_cpu_requirement(row)),
+            'memory_req': float(env._estimate_task_memory_requirement(row)),
+            'priority': float(row.get('task_instance_priority', 0) or 0),
+            'task_type': row.get('task_type', 'SHELL')
+        })
+
+    resources: List[Dict] = []
+    for host, r in env.available_resources.items():
+        resources.append({
+            'id': host,
+            'name': host,
+            'cpu_capacity': float(r.get('cpu_capacity', 4.0)),
+            'memory_capacity': float(r.get('memory_capacity', 8.0))
+        })
+
+    dependencies: List[Tuple[int, int]] = []
+    for dep in getattr(env, 'current_process_dependencies', []) or []:
+        pre_code = dep.get('pre_task_code')
+        post_code = dep.get('post_task_code')
+        if pd.notna(pre_code) and pd.notna(post_code):
+            pre_id = code_to_task_id.get(int(pre_code))
+            post_id = code_to_task_id.get(int(post_code))
+            if pre_id is not None and post_id is not None:
+                dependencies.append((pre_id, post_id))
+
+    return tasks, resources, dependencies
+
+
+def _clone_replay_env(env: LogReplaySimulator) -> LogReplaySimulator:
+    """克隆回放环境（用于多算法多次公平评估）"""
+    return LogReplaySimulator(
+        process_instances=env.process_instances.copy(),
+        task_instances=env.task_instances.copy(),
+        task_definitions=env.task_definitions.copy(),
+        process_task_relations=env.process_task_relations.copy(),
+    )
+
+
+def run_replay_baseline_comparison(val_env: LogReplaySimulator,
+                                   logger: logging.Logger,
+                                   num_episodes: int = 10) -> Dict[str, Dict[str, float]]:
+    """在回放数据上运行传统基线并汇总为论文表格用指标"""
+    schedulers = {
+        'FIFO': FIFOScheduler(),
+        'SJF': SJFScheduler(),
+        'HEFT': HEFTScheduler(),
+    }
+
+    comparison: Dict[str, Dict[str, float]] = {}
+    for name, scheduler in schedulers.items():
+        makespans: List[float] = []
+        utilizations: List[float] = []
+
+        for _ in range(num_episodes):
+            env = _clone_replay_env(val_env)
+            env.reset()
+            tasks, resources, dependencies = _extract_replay_snapshot_for_baselines(env)
+
+            if not tasks or not resources:
+                continue
+
+            result = scheduler.schedule(tasks, resources, dependencies)
+            makespan = result.get('makespan', float('inf'))
+            if not isinstance(makespan, (int, float)) or not math.isfinite(makespan):
+                continue
+
+            util = result.get('resource_utilization', 0.0)
+            makespans.append(float(makespan))
+            utilizations.append(float(util) if isinstance(util, (int, float)) else 0.0)
+
+        comparison[name] = {
+            'makespan': float(np.mean(makespans)) if makespans else float('inf'),
+            'makespan_std': float(np.std(makespans)) if makespans else 0.0,
+            'utilization': float(np.mean(utilizations)) if utilizations else 0.0,
+            'episodes': len(makespans)
+        }
+        logger.info(f"Replay baseline {name}: {comparison[name]}")
+
+    return comparison
+
+
+def generate_paper_tables(output_dir: Path,
+                          fe_result: Dict[str, float],
+                          baseline_results: Dict[str, Dict[str, float]],
+                          logger: logging.Logger):
+    """自动生成论文可直接引用的结果表"""
+    rows = []
+    rows.append({
+        'Algorithm': 'FE-IDDQN',
+        'Avg Makespan': fe_result.get('makespan', 0.0),
+        'Std Makespan': fe_result.get('makespan_std', 0.0),
+        'Avg Utilization': fe_result.get('utilization', 0.0),
+        'Episodes': fe_result.get('episodes', 0)
+    })
+
+    for name, m in baseline_results.items():
+        rows.append({
+            'Algorithm': name,
+            'Avg Makespan': m.get('makespan', 0.0),
+            'Std Makespan': m.get('makespan_std', 0.0),
+            'Avg Utilization': m.get('utilization', 0.0),
+            'Episodes': m.get('episodes', 0)
+        })
+
+    df = pd.DataFrame(rows)
+    if not df.empty and 'Avg Makespan' in df.columns:
+        df = df.sort_values('Avg Makespan', ascending=True).reset_index(drop=True)
+
+    csv_path = output_dir / 'paper_results_table.csv'
+    df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+
+    # 论文友好的Markdown表
+    md_path = output_dir / 'paper_results_table.md'
+    md_lines = [
+        '| Algorithm | Avg Makespan | Std Makespan | Avg Utilization | Episodes |',
+        '|---|---:|---:|---:|---:|'
+    ]
+    for _, row in df.iterrows():
+        md_lines.append(
+            f"| {row['Algorithm']} | {row['Avg Makespan']:.4f} | {row['Std Makespan']:.4f} | {row['Avg Utilization']:.4f} | {int(row['Episodes'])} |"
+        )
+
+    with open(md_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(md_lines) + '\n')
+
+    # 计算FE-IDDQN相对提升
+    improvements = {}
+    fe_makespan = float(fe_result.get('makespan', 0.0))
+    for name, m in baseline_results.items():
+        base_ms = float(m.get('makespan', 0.0))
+        if base_ms > 0 and math.isfinite(base_ms):
+            improvements[name] = {
+                'makespan_improvement_ratio': (base_ms - fe_makespan) / base_ms
+            }
+
+    with open(output_dir / 'paper_improvements.json', 'w', encoding='utf-8') as f:
+        json.dump(improvements, f, indent=2, ensure_ascii=False)
+
+    logger.info(f"Paper tables generated: {csv_path}, {md_path}")
+
+
 # ─────────── 评估函数 ─────────── #
 
 def evaluate_dqn_agent(agent: EnhancedFE_IDDQN,
@@ -128,17 +478,17 @@ def evaluate_dqn_agent(agent: EnhancedFE_IDDQN,
     balances = []
 
     for _ in range(num_episodes):
-        state = env.reset()
+        state = _reset_env_and_get_state(env)
         done = False
+        last_info = {}
 
         while not done:
-            task_feats = state.get('task_features',
-                                   np.zeros((1, agent.task_input_dim)))
-            res_feats = state.get('resource_features',
-                                  np.zeros((1, agent.resource_input_dim)))
-            adj = state.get('adj_matrix', None)
-            node_depths = state.get('node_depths', None)
-            critical_mask = state.get('critical_path_mask', None)
+            _, task_feats, res_feats, adj, node_depths, critical_mask = \
+                _normalize_state_for_agent(
+                    state,
+                    task_input_dim=agent.task_input_dim,
+                    resource_input_dim=agent.resource_input_dim
+                )
 
             action = agent.select_action(
                 task_feats, res_feats,
@@ -148,17 +498,19 @@ def evaluate_dqn_agent(agent: EnhancedFE_IDDQN,
                 training=False)
 
             state, reward, done, info = env.step(action)
+            last_info = info
 
-        result = env.get_scheduling_result()
+        result = _extract_env_metrics(env, last_info)
         makespans.append(result['makespan'])
         utilizations.append(result['resource_utilization'])
         balances.append(result['load_balance'])
 
     return {
-        'makespan': np.mean(makespans),
-        'makespan_std': np.std(makespans),
-        'utilization': np.mean(utilizations),
-        'load_balance': np.mean(balances),
+        'makespan': float(np.mean(makespans)),
+        'makespan_std': float(np.std(makespans)),
+        'utilization': float(np.mean(utilizations)),
+        'load_balance': float(np.mean(balances)),
+        'episodes': int(num_episodes),
     }
 
 
@@ -197,19 +549,19 @@ def train_dqn(agent: EnhancedFE_IDDQN,
 
     for episode in range(config.max_episodes):
         ep_start = time.time()
-        state = env.reset()
+        state = _reset_env_and_get_state(env)
         ep_reward = 0.0
         ep_steps = 0
+        last_info: Dict[str, Any] = {}
 
         done = False
         while not done and ep_steps < config.max_steps_per_episode:
-            task_feats = state.get('task_features',
-                                   np.zeros((1, agent.task_input_dim)))
-            res_feats = state.get('resource_features',
-                                  np.zeros((1, agent.resource_input_dim)))
-            adj = state.get('adj_matrix', None)
-            node_depths = state.get('node_depths', None)
-            critical_mask = state.get('critical_path_mask', None)
+            state_for_store, task_feats, res_feats, adj, node_depths, critical_mask = \
+                _normalize_state_for_agent(
+                    state,
+                    task_input_dim=agent.task_input_dim,
+                    resource_input_dim=agent.resource_input_dim
+                )
 
             # 选择动作
             action = agent.select_action(
@@ -221,9 +573,17 @@ def train_dqn(agent: EnhancedFE_IDDQN,
 
             # 环境交互
             next_state, reward, done, info = env.step(action)
+            last_info = info
+
+            next_state_for_store, _, _, _, _, _ = _normalize_state_for_agent(
+                next_state,
+                task_input_dim=agent.task_input_dim,
+                resource_input_dim=agent.resource_input_dim
+            )
 
             # 存储经验
-            agent.store_experience(state, action, reward, next_state, done, info)
+            agent.store_experience(state_for_store, action, reward,
+                                   next_state_for_store, done, info)
 
             # DQN训练步骤 (off-policy: 每 train_freq 步训练一次)
             if total_steps % config.train_freq == 0:
@@ -235,9 +595,10 @@ def train_dqn(agent: EnhancedFE_IDDQN,
             state = next_state
 
         # Episode 结束回调
+        ep_metrics = _extract_env_metrics(env, last_info)
         agent.on_episode_end(ep_reward, {
-            'makespan': info.get('makespan', 0),
-            'utilization': info.get('utilization', 0),
+            'makespan': ep_metrics.get('makespan', 0),
+            'utilization': ep_metrics.get('resource_utilization', 0),
         })
 
         ep_time = time.time() - ep_start
@@ -335,30 +696,36 @@ def run_ga_search(task_input_dim: int, resource_input_dim: int,
 
             # 短期训练
             for ep in range(ga_cfg.eval_episodes):
-                state = env.reset()
+                state = _reset_env_and_get_state(env)
                 done = False
                 steps = 0
                 while not done and steps < 200:
-                    tf = state.get('task_features',
-                                   np.zeros((1, task_input_dim)))
-                    rf = state.get('resource_features',
-                                   np.zeros((1, resource_input_dim)))
-                    adj = state.get('adj_matrix', None)
-                    nd = state.get('node_depths', None)
-                    cm = state.get('critical_path_mask', None)
+                    state_for_store, tf, rf, adj, nd, cm = \
+                        _normalize_state_for_agent(
+                            state,
+                            task_input_dim=task_input_dim,
+                            resource_input_dim=resource_input_dim
+                        )
 
                     action = agent.select_action(
                         tf, rf, adj_matrix=adj,
                         node_depths=nd, critical_path_mask=cm,
                         training=True)
                     next_state, reward, done, info = env.step(action)
+
+                    next_state_for_store, _, _, _, _, _ = _normalize_state_for_agent(
+                        next_state,
+                        task_input_dim=task_input_dim,
+                        resource_input_dim=resource_input_dim
+                    )
                     agent.store_experience(
-                        state, action, reward, next_state, done, info)
+                        state_for_store, action, reward,
+                        next_state_for_store, done, info)
 
                     if steps % 4 == 0:
                         agent.train_step()
 
-                    state = next_state if not done else env.reset()
+                    state = next_state if not done else _reset_env_and_get_state(env)
                     steps += 1
 
             # 评估
@@ -432,30 +799,35 @@ def run_hpo(task_input_dim: int, resource_input_dim: int,
 
         # 短期训练
         for ep in range(hpo_cfg.eval_episodes):
-            state = env.reset()
+            state = _reset_env_and_get_state(env)
             done = False
             steps = 0
             while not done and steps < 200:
-                tf = state.get('task_features',
-                               np.zeros((1, task_input_dim)))
-                rf = state.get('resource_features',
-                               np.zeros((1, resource_input_dim)))
-                adj = state.get('adj_matrix', None)
-                nd = state.get('node_depths', None)
-                cm = state.get('critical_path_mask', None)
+                state_for_store, tf, rf, adj, nd, cm = _normalize_state_for_agent(
+                    state,
+                    task_input_dim=task_input_dim,
+                    resource_input_dim=resource_input_dim
+                )
 
                 action = agent.select_action(
                     tf, rf, adj_matrix=adj,
                     node_depths=nd, critical_path_mask=cm,
                     training=True)
                 next_state, reward, done, info = env.step(action)
+
+                next_state_for_store, _, _, _, _, _ = _normalize_state_for_agent(
+                    next_state,
+                    task_input_dim=task_input_dim,
+                    resource_input_dim=resource_input_dim
+                )
                 agent.store_experience(
-                    state, action, reward, next_state, done, info)
+                    state_for_store, action, reward,
+                    next_state_for_store, done, info)
 
                 if steps % 4 == 0:
                     agent.train_step()
 
-                state = next_state if not done else env.reset()
+                state = next_state if not done else _reset_env_and_get_state(env)
                 steps += 1
 
         return evaluate_dqn_agent(agent, env, num_episodes=5)
@@ -488,6 +860,15 @@ def main():
                         default='results/fe_iddqn_ga_hpo',
                         help='输出目录')
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--env_type', type=str, default='synthetic',
+                        choices=['synthetic', 'replay'],
+                        help='环境类型: synthetic|replay')
+    parser.add_argument('--replay_data_dir', type=str, default='data/raw_data',
+                        help='回放数据目录 (包含 process/task CSV)')
+    parser.add_argument('--replay_train_ratio', type=float, default=0.8,
+                        help='回放训练集比例')
+    parser.add_argument('--paper_eval_episodes', type=int, default=10,
+                        help='论文表格基线评估回合数（仅replay模式）')
     parser.add_argument('--num_tasks', type=int, default=20)
     parser.add_argument('--num_resources', type=int, default=5)
     parser.add_argument('--max_episodes', type=int, default=500)
@@ -510,16 +891,29 @@ def main():
     logger.info(f"Output: {output_dir}")
 
     # ── 创建环境 ──
-    train_env = make_env(args.num_tasks, args.num_resources, seed=args.seed)
-    val_env = make_env(args.num_tasks, args.num_resources, seed=args.seed + 1)
+    replay_meta = None
+    if args.env_type == 'replay':
+        replay_data_dir = Path(args.replay_data_dir)
+        train_env, val_env, replay_meta = make_replay_envs(
+            replay_data_dir,
+            train_ratio=args.replay_train_ratio,
+            logger=logger
+        )
+    else:
+        train_env = make_env(args.num_tasks, args.num_resources, seed=args.seed)
+        val_env = make_env(args.num_tasks, args.num_resources, seed=args.seed + 1)
 
     # 获取维度
-    state = train_env.reset()
-    task_feats = state.get('task_features', np.zeros((1, 16)))
-    res_feats = state.get('resource_features', np.zeros((1, 7)))
+    state = _reset_env_and_get_state(train_env)
+    _, task_feats, res_feats, _, _, _ = _normalize_state_for_agent(
+        state,
+        task_input_dim=16,
+        resource_input_dim=7
+    )
     task_input_dim = task_feats.shape[-1] if len(task_feats.shape) >= 2 else 16
     resource_input_dim = res_feats.shape[-1] if len(res_feats.shape) >= 2 else 7
-    action_dim = args.num_resources
+    action_dim = int(getattr(train_env, 'num_resources', args.num_resources) or args.num_resources)
+    action_dim = max(action_dim, 1)
 
     logger.info(f"Env dims: task={task_input_dim}, resource={resource_input_dim}, "
                 f"action={action_dim}")
@@ -529,6 +923,8 @@ def main():
     config_info['task_input_dim'] = task_input_dim
     config_info['resource_input_dim'] = resource_input_dim
     config_info['action_dim'] = action_dim
+    if replay_meta:
+        config_info['replay_meta'] = replay_meta
     with open(output_dir / 'config.json', 'w') as f:
         json.dump(config_info, f, indent=2)
 
@@ -624,6 +1020,20 @@ def main():
 
         with open(output_dir / 'final_eval.json', 'w') as f:
             json.dump(final_eval, f, indent=2, default=str)
+
+        # replay模式自动生成论文表格（含传统基线）
+        if args.env_type == 'replay':
+            baseline_results = run_replay_baseline_comparison(
+                val_env=val_env,
+                logger=logger,
+                num_episodes=args.paper_eval_episodes
+            )
+            generate_paper_tables(
+                output_dir=output_dir,
+                fe_result=final_eval,
+                baseline_results=baseline_results,
+                logger=logger
+            )
 
     logger.info("Done!")
 
