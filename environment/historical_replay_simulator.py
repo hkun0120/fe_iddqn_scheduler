@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 
 class HistoricalReplaySimulator:
     """基于历史数据重放的仿真环境"""
+    MAX_TASKS_PER_STATE = 5
+    MAX_RESOURCES_PER_STATE = 5
     
     def __init__(self, process_instances: pd.DataFrame, task_instances: pd.DataFrame, 
                  task_definitions: pd.DataFrame, process_task_relations: pd.DataFrame):
@@ -62,6 +64,11 @@ class HistoricalReplaySimulator:
         self.task_schedule_history = []
         # 重置执行时间累积器
         self.execution_time_accumulator = {}
+        # 时间积分口径的资源利用率统计
+        self.total_cpu_busy_time = 0.0
+        self.total_cpu_capacity_time = 0.0
+        self.total_memory_busy_time = 0.0
+        self.total_memory_capacity_time = 0.0
         
         # 获取有任务的进程ID
         processes_with_tasks = self.task_instances['process_instance_id'].unique()
@@ -311,8 +318,8 @@ class HistoricalReplaySimulator:
             resource_features.append(features)
         
         # 分批处理参数：每次处理的任务批次大小
-        MAX_TASKS = 5  # 每批次处理的任务数量
-        MAX_RESOURCES = 5  # 最大资源数量（修复：从3改为5）
+        MAX_TASKS = self.MAX_TASKS_PER_STATE
+        MAX_RESOURCES = self.MAX_RESOURCES_PER_STATE
         
         # 任务特征标准化 - 现在分批处理已经确保了固定长度
         # 每个任务特征都是16个元素，不需要额外处理
@@ -809,6 +816,13 @@ class HistoricalReplaySimulator:
                     'FLINK': 300.0,
                     'HTTP': 5.0
                 }.get(task_type, 10.0)
+
+            # 累积时间积分利用率统计（按任务执行时长加权）
+            if task_duration > 0:
+                self.total_cpu_busy_time += cpu_req * task_duration
+                self.total_cpu_capacity_time += resource['cpu_capacity'] * task_duration
+                self.total_memory_busy_time += memory_req * task_duration
+                self.total_memory_capacity_time += resource['memory_capacity'] * task_duration
             
             # 关键改进：基于真实时间的调度
             if resource['cpu_used'] <= cpu_req and resource['memory_used'] <= memory_req:
@@ -849,7 +863,23 @@ class HistoricalReplaySimulator:
             return self.get_state(), reward, False, {
                 'task_scheduled': True,
                 'host': selected_host,
-                'task_name': current_task['name']
+                'task_name': current_task['name'],
+                'task_id': int(current_task.get('id', -1)),
+                'cpu_req': float(cpu_req),
+                'memory_req': float(memory_req),
+                'start_time': float(resource.get('execution_time', 0.0) - task_duration),
+                'end_time': float(resource.get('execution_time', 0.0)),
+                'duration': float(task_duration),
+                'current_makespan': float(self.get_makespan()),
+                'completed_tasks': int(len(self.completed_tasks)),
+                'total_tasks': int(len(self.current_process_tasks)),
+                'resource_loads': [
+                    float(r.get('execution_time', 0.0))
+                    for r in self.available_resources.values()
+                ],
+                'num_resources': int(len(self.available_resources)),
+                'utilization': float(self.get_resource_utilization()),
+                'load_balance': float(self.get_load_balance_score())
             }
         else:
             # 资源不足，给予负奖励
@@ -920,6 +950,12 @@ class HistoricalReplaySimulator:
         """获取资源利用率"""
         if not self.available_resources:
             return 0.0
+
+        # 优先返回时间积分口径，避免“任务结束即释放资源”导致的瞬时0利用率
+        total_busy_time = self.total_cpu_busy_time + self.total_memory_busy_time
+        total_capacity_time = self.total_cpu_capacity_time + self.total_memory_capacity_time
+        if total_capacity_time > 0:
+            return float(total_busy_time / total_capacity_time)
         
         total_utilization = 0.0
         for resource in self.available_resources.values():
@@ -928,6 +964,30 @@ class HistoricalReplaySimulator:
             total_utilization += (cpu_util + memory_util) / 2
         
         return total_utilization / len(self.available_resources)
+
+    def get_load_balance_score(self) -> float:
+        """根据各主机累计执行时间计算负载均衡分数，范围[0,1]"""
+        if not self.available_resources:
+            return 0.0
+
+        loads = np.array([
+            float(resource.get('execution_time', 0.0))
+            for resource in self.available_resources.values()
+        ], dtype=np.float32)
+
+        if loads.size <= 1:
+            return 1.0
+
+        mean_load = float(np.mean(loads))
+        if mean_load <= 1e-8:
+            return 1.0
+
+        cv = float(np.std(loads) / mean_load)
+        return float(1.0 / (1.0 + cv))
+
+    def get_valid_action_count(self) -> int:
+        """返回当前状态下有效动作数（可用资源数）"""
+        return max(1, len(self.available_resources))
     
     def get_resource_efficiency(self) -> Dict:
         """监控资源利用效率"""

@@ -133,6 +133,9 @@ class EnhancedFE_IDDQN:
         self.episode_count = 0
         self.training_losses = []
         self.episode_rewards = []
+        self.has_optimizer_step = False
+        # 与环境状态对齐的动态槽位数（首次存储经验时自动推断）
+        self.state_layout = None
         
     def _build_networks(self):
         """构建网络"""
@@ -246,6 +249,7 @@ class EnhancedFE_IDDQN:
                      adj_matrix: Optional[np.ndarray] = None,
                      node_depths: Optional[np.ndarray] = None,
                      critical_path_mask: Optional[np.ndarray] = None,
+                     valid_action_count: Optional[int] = None,
                      training: bool = True) -> int:
         """
         选择动作
@@ -256,6 +260,7 @@ class EnhancedFE_IDDQN:
             adj_matrix: 邻接矩阵 [num_tasks, num_tasks]
             node_depths: 节点深度 [num_tasks]
             critical_path_mask: 关键路径掩码 [num_tasks]
+            valid_action_count: 当前状态下有效动作数量（用于屏蔽无效动作）
             training: 是否在训练模式
             
         Returns:
@@ -283,6 +288,13 @@ class EnhancedFE_IDDQN:
                 task_tensor, resource_tensor,
                 adj_tensor, depth_tensor, mask_tensor
             ).squeeze(0)
+
+        # 屏蔽无效动作，避免不同动作别名映射到同一资源
+        if valid_action_count is not None:
+            valid_count = int(max(1, min(valid_action_count, self.action_dim)))
+            if valid_count < self.action_dim:
+                q_values = q_values.clone()
+                q_values[valid_count:] = -1e9
         
         # 探索/利用
         if training:
@@ -296,6 +308,9 @@ class EnhancedFE_IDDQN:
                         reward: float, next_state: Dict[str, np.ndarray],
                         done: bool, info: Optional[Dict] = None):
         """存储经验"""
+        if self.state_layout is None:
+            self._infer_state_layout(state)
+
         # 展平状态为单一数组
         state_flat = self._flatten_state(state)
         next_state_flat = self._flatten_state(next_state)
@@ -340,6 +355,7 @@ class EnhancedFE_IDDQN:
             )
         
         self.optimizer.step()
+        self.has_optimizer_step = True
         
         # 更新统计
         self.step_count += 1
@@ -439,15 +455,48 @@ class EnhancedFE_IDDQN:
         losses['total_loss'] = total_loss
         
         return losses
+
+    def _infer_state_layout(self, state: Dict[str, np.ndarray]):
+        """根据环境状态自动推断任务/资源槽位数，消除硬编码维度不一致。"""
+        task_features = np.asarray(state.get('task_features', np.array([])))
+        resource_features = np.asarray(state.get('resource_features', np.array([])))
+
+        if task_features.ndim == 3 and task_features.shape[0] == 1:
+            task_features = task_features[0]
+        if resource_features.ndim == 3 and resource_features.shape[0] == 1:
+            resource_features = resource_features[0]
+
+        if task_features.ndim == 2 and task_features.shape[1] == self.task_input_dim:
+            num_tasks = int(task_features.shape[0])
+        else:
+            num_tasks = 8
+
+        if resource_features.ndim == 2 and resource_features.shape[1] == self.resource_input_dim:
+            num_resources = int(resource_features.shape[0])
+        else:
+            num_resources = 6
+
+        self.state_layout = {
+            'num_tasks': max(1, num_tasks),
+            'num_resources': max(1, num_resources),
+        }
+        self.logger.info(
+            "Inferred state layout: num_tasks=%d, num_resources=%d",
+            self.state_layout['num_tasks'], self.state_layout['num_resources']
+        )
     
     def _reconstruct_features(self, states: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """从展平的状态重构任务和资源特征"""
         batch_size = states.shape[0]
         total_features = states.shape[1]
         
-        # 实际的任务和资源数量
-        num_tasks = 8
-        num_resources = 6
+        if self.state_layout:
+            num_tasks = int(self.state_layout.get('num_tasks', 8))
+            num_resources = int(self.state_layout.get('num_resources', 6))
+        else:
+            # 若尚未推断，回退到旧默认值
+            num_tasks = 8
+            num_resources = 6
         
         task_features_size = num_tasks * self.task_input_dim
         resource_features_size = num_resources * self.resource_input_dim
@@ -499,7 +548,8 @@ class EnhancedFE_IDDQN:
             self.curriculum_scheduler.step()
         
         # 更新学习率
-        self.scheduler.step()
+        if self.has_optimizer_step:
+            self.scheduler.step()
         
         # 日志
         if self.episode_count % 10 == 0:

@@ -141,6 +141,28 @@ pip install -r requirements.txt
 - `oceanbase_t_ds_process_task_relation.csv`
 - `oceanbase_t_ds_task_definition.csv`
 
+或者直接从 `whalesb` 数据库一键导出并生成固定划分（推荐）：
+
+```bash
+export DB_PASSWORD='your_password_here'
+
+python scripts/prepare_whalesb_replay_data.py \
+    --host localhost \
+    --port 3306 \
+    --user root \
+    --password "$DB_PASSWORD" \
+    --database whalesb \
+    --output-dir data/raw_data
+```
+
+该脚本会执行：
+- 导出训练所需5表到 `data/raw_data/`
+- 过滤成功流程（state=7）并做依赖完整性校验
+- 生成固定的 6:2:2 split 到 `data/raw_data/splits/`
+- 生成 `data/raw_data/provenance_manifest.json` 记录数据来源与统计
+
+可先用 `--dry-run` 验证数据库连通和统计，不写文件。
+
 ### 3. 快速开始
 
 #### 3.1 运行增强版演示

@@ -195,6 +195,73 @@ def _extract_env_metrics(env: Any, info: Optional[Dict[str, Any]] = None) -> Dic
     }
 
 
+def _get_valid_action_count(env: Any, res_feats: np.ndarray, fallback: int) -> int:
+    """获取当前状态下有效动作数，避免动作别名映射。"""
+    if hasattr(env, 'get_valid_action_count'):
+        try:
+            return max(1, int(env.get_valid_action_count()))
+        except Exception:
+            pass
+
+    if isinstance(res_feats, np.ndarray) and res_feats.ndim >= 2:
+        # 资源特征中全0行通常表示padding资源，不计入有效动作
+        non_zero_rows = int(np.sum(np.any(np.abs(res_feats) > 1e-8, axis=1)))
+        if non_zero_rows > 0:
+            return max(1, non_zero_rows)
+
+    if hasattr(env, 'num_resources'):
+        try:
+            return max(1, int(getattr(env, 'num_resources')))
+        except Exception:
+            pass
+
+    return max(1, int(fallback))
+
+
+def _compute_training_reward(agent: EnhancedFE_IDDQN,
+                             env: Any,
+                             env_reward: float,
+                             info: Dict[str, Any]) -> float:
+    """融合环境奖励与增强奖励，确保 reward_calculator 在训练主环生效。"""
+    if not hasattr(agent, 'reward_calculator'):
+        return float(env_reward)
+
+    try:
+        host = info.get('host')
+        resource = {}
+        if host and hasattr(env, 'available_resources'):
+            resource = dict(getattr(env, 'available_resources', {}).get(host, {}))
+
+        task = {
+            'cpu_req': float(info.get('cpu_req', 0.0)),
+            'memory_req': float(info.get('memory_req', 0.0)),
+            'criticality_score': 1.0,
+            'is_critical_path': False,
+            'earliest_start_time': float(info.get('start_time', 0.0)),
+        }
+        scheduler_state = {
+            'current_makespan': float(info.get('current_makespan', 0.0)),
+            'total_tasks': int(info.get('total_tasks', 1)),
+            'completed_tasks': int(info.get('completed_tasks', 0)),
+            'resource_loads': list(info.get('resource_loads', [])),
+            'num_resources': int(info.get('num_resources', 1)),
+            'concurrent_tasks_at_time': {},
+        }
+        shaped_reward, _ = agent.reward_calculator.calculate_reward(
+            task=task,
+            resource=resource,
+            start_time=float(info.get('start_time', 0.0)),
+            end_time=float(info.get('end_time', info.get('start_time', 0.0))),
+            scheduler_state=scheduler_state,
+        )
+
+        # 以环境奖励为主，增强奖励为辅，降低训练分布突变风险
+        alpha = 0.7
+        return float(alpha * env_reward + (1.0 - alpha) * shaped_reward)
+    except Exception:
+        return float(env_reward)
+
+
 def _reset_env_and_get_state(env: Any) -> Any:
     """兼容不同环境reset返回风格，统一返回state"""
     state = env.reset()
@@ -216,24 +283,29 @@ def load_replay_dataframes(data_dir: Path) -> Dict[str, pd.DataFrame]:
     """加载真实日志数据并返回DataFrame字典"""
     return {
         'process_definition': _read_first_existing_csv(data_dir, [
+            't_ds_process_definition.csv',
             'oceanbase_t_ds_process_definition.csv',
             '__B_t_ds_process_definition.csv'
         ]),
         'process_instance': _read_first_existing_csv(data_dir, [
+            't_ds_process_instance.csv',
             'gaussdb_t_ds_process_instance_a.csv',
             'Commercial_B_t_ds_process_instance.csv',
             '__B_t_ds_process_instance.csv'
         ]),
         'task_definition': _read_first_existing_csv(data_dir, [
+            't_ds_task_definition.csv',
             'oceanbase_t_ds_task_definition.csv',
             '__B_t_ds_task_definition.csv'
         ]),
         'task_instance': _read_first_existing_csv(data_dir, [
+            't_ds_task_instance.csv',
             'gaussdb_t_ds_task_instance_a.csv',
             'Commercial_B_t_ds_task_instance.csv',
             '__B_t_ds_task_instance.csv'
         ]),
         'process_task_relation': _read_first_existing_csv(data_dir, [
+            't_ds_process_task_relation.csv',
             'oceanbase_t_ds_process_task_relation.csv',
             '__B_t_ds_process_task_relation.csv'
         ])
@@ -251,6 +323,37 @@ def make_replay_envs(data_dir: Path,
     task_instances = data['task_instance'].copy()
     task_definitions = data['task_definition'].copy()
     process_task_relations = data['process_task_relation'].copy()
+
+    # 兼容不同来源CSV字段命名，适配 HistoricalReplaySimulator 预期列
+    if 'process_definition_code' not in process_instances.columns:
+        if 'process_definition_id' in process_instances.columns:
+            process_instances['process_definition_code'] = process_instances['process_definition_id']
+        else:
+            process_instances['process_definition_code'] = 0
+
+    if 'process_definition_code' not in process_task_relations.columns:
+        if 'process_definition_id' in process_task_relations.columns:
+            process_task_relations['process_definition_code'] = process_task_relations['process_definition_id']
+        else:
+            process_task_relations['process_definition_code'] = 0
+
+    if 'process_definition_code' not in task_instances.columns:
+        proc_code_map = process_instances[['id', 'process_definition_code']].drop_duplicates()
+        task_instances = task_instances.merge(
+            proc_code_map,
+            left_on='process_instance_id',
+            right_on='id',
+            how='left',
+            suffixes=('', '_proc')
+        )
+        if 'id_proc' in task_instances.columns:
+            task_instances = task_instances.drop(columns=['id_proc'])
+
+    if 'host' not in task_instances.columns:
+        if 'worker_group' in task_instances.columns:
+            task_instances['host'] = task_instances['worker_group'].fillna('default_host')
+        else:
+            task_instances['host'] = 'default_host'
 
     processes_with_tasks = set(task_instances['process_instance_id'].unique())
     successful = process_instances[
@@ -314,7 +417,7 @@ def _extract_replay_snapshot_for_baselines(env: LogReplaySimulator) -> Tuple[Lis
         task_id = int(row['id'])
         task_code = row.get('task_code', row.get('task_definition_code', None))
         if pd.notna(task_code):
-            code_to_task_id[int(task_code)] = task_id
+            code_to_task_id[str(task_code)] = task_id
 
         tasks.append({
             'id': task_id,
@@ -340,8 +443,8 @@ def _extract_replay_snapshot_for_baselines(env: LogReplaySimulator) -> Tuple[Lis
         pre_code = dep.get('pre_task_code')
         post_code = dep.get('post_task_code')
         if pd.notna(pre_code) and pd.notna(post_code):
-            pre_id = code_to_task_id.get(int(pre_code))
-            post_id = code_to_task_id.get(int(post_code))
+            pre_id = code_to_task_id.get(str(pre_code))
+            post_id = code_to_task_id.get(str(post_code))
             if pre_id is not None and post_id is not None:
                 dependencies.append((pre_id, post_id))
 
@@ -495,6 +598,7 @@ def evaluate_dqn_agent(agent: EnhancedFE_IDDQN,
                 adj_matrix=adj,
                 node_depths=node_depths,
                 critical_path_mask=critical_mask,
+                valid_action_count=_get_valid_action_count(env, res_feats, agent.action_dim),
                 training=False)
 
             state, reward, done, info = env.step(action)
@@ -569,11 +673,13 @@ def train_dqn(agent: EnhancedFE_IDDQN,
                 adj_matrix=adj,
                 node_depths=node_depths,
                 critical_path_mask=critical_mask,
+                valid_action_count=_get_valid_action_count(env, res_feats, agent.action_dim),
                 training=True)
 
             # 环境交互
-            next_state, reward, done, info = env.step(action)
+            next_state, env_reward, done, info = env.step(action)
             last_info = info
+            reward = _compute_training_reward(agent, env, env_reward, info)
 
             next_state_for_store, _, _, _, _, _ = _normalize_state_for_agent(
                 next_state,
@@ -710,8 +816,10 @@ def run_ga_search(task_input_dim: int, resource_input_dim: int,
                     action = agent.select_action(
                         tf, rf, adj_matrix=adj,
                         node_depths=nd, critical_path_mask=cm,
+                        valid_action_count=_get_valid_action_count(env, rf, action_dim),
                         training=True)
-                    next_state, reward, done, info = env.step(action)
+                    next_state, env_reward, done, info = env.step(action)
+                    reward = _compute_training_reward(agent, env, env_reward, info)
 
                     next_state_for_store, _, _, _, _, _ = _normalize_state_for_agent(
                         next_state,
@@ -812,8 +920,10 @@ def run_hpo(task_input_dim: int, resource_input_dim: int,
                 action = agent.select_action(
                     tf, rf, adj_matrix=adj,
                     node_depths=nd, critical_path_mask=cm,
+                    valid_action_count=_get_valid_action_count(env, rf, action_dim),
                     training=True)
-                next_state, reward, done, info = env.step(action)
+                next_state, env_reward, done, info = env.step(action)
+                reward = _compute_training_reward(agent, env, env_reward, info)
 
                 next_state_for_store, _, _, _, _, _ = _normalize_state_for_agent(
                     next_state,
@@ -869,6 +979,8 @@ def main():
                         help='回放训练集比例')
     parser.add_argument('--paper_eval_episodes', type=int, default=10,
                         help='论文表格基线评估回合数（仅replay模式）')
+    parser.add_argument('--final_eval_episodes', type=int, default=20,
+                        help='最终评估回合数')
     parser.add_argument('--num_tasks', type=int, default=20)
     parser.add_argument('--num_resources', type=int, default=5)
     parser.add_argument('--max_episodes', type=int, default=500)
@@ -912,7 +1024,10 @@ def main():
     )
     task_input_dim = task_feats.shape[-1] if len(task_feats.shape) >= 2 else 16
     resource_input_dim = res_feats.shape[-1] if len(res_feats.shape) >= 2 else 7
-    action_dim = int(getattr(train_env, 'num_resources', args.num_resources) or args.num_resources)
+    action_dim = int(max(
+        getattr(train_env, 'num_resources', args.num_resources) or args.num_resources,
+        res_feats.shape[0] if len(res_feats.shape) >= 2 else args.num_resources
+    ))
     action_dim = max(action_dim, 1)
 
     logger.info(f"Env dims: task={task_input_dim}, resource={resource_input_dim}, "
@@ -1012,7 +1127,8 @@ def main():
         logger.info("Final Evaluation")
         logger.info("=" * 60)
 
-        final_eval = evaluate_dqn_agent(agent, val_env, num_episodes=20)
+        final_eval = evaluate_dqn_agent(
+            agent, val_env, num_episodes=args.final_eval_episodes)
         logger.info(f"  Makespan:     {final_eval['makespan']:.2f} "
                      f"± {final_eval['makespan_std']:.2f}")
         logger.info(f"  Utilization:  {final_eval['utilization']:.4f}")

@@ -49,6 +49,23 @@ data/db_config_remote.json
 # CSV data files (real data should not be committed)
 *.csv
 fe_iddqn_training_system/data/*.csv
+data/raw_data/
+results/
+*_results/
+
+# Large binary/artifact files
+*.pdf
+*.parquet
+*.feather
+*.h5
+*.pt
+*.pth
+
+# Temporary analysis notes/scripts
+CHANGELOG_Analysis.md
+CODE_CHANGES_SUMMARY.md
+COMMIT_DETAILS.txt
+scripts/*_tmp.py
 
 # Large model files (optional - uncomment if you don't want to track models)
 # fe_iddqn_training_system/models/*.pkl
