@@ -1,0 +1,6 @@
+{
+  "db_user": "your_user",
+  "db_password": "your_password",
+  "db_host": "localhost",
+  "db_name": "whalesb"
+}

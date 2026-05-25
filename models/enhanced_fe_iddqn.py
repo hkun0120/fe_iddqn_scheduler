@@ -38,6 +38,9 @@ class EnhancedFE_IDDQN_Config:
     use_gnn: bool = True
     use_noisy_net: bool = False
     
+    # 模块消融 (Ablation flags)
+    use_feature_engineering: bool = True
+    
     # 训练参数
     learning_rate: float = 3e-4
     batch_size: int = 64

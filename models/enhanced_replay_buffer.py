@@ -552,6 +552,16 @@ class CombinedReplayBuffer:
                 'indices': indices,
                 'weights': weights
             }
+        elif not self.use_per and len(self.simple_buffer) >= batch_size:
+            import random
+            experiences = random.sample(list(self.simple_buffer), batch_size)
+            indices = np.zeros(batch_size, dtype=np.int32)
+            weights = np.ones(batch_size, dtype=np.float32)
+            result['per'] = {
+                'experiences': experiences,
+                'indices': indices,
+                'weights': weights
+            }
         
         # 从N-step缓冲区采样
         if self.use_n_step and len(self.n_step_buffer) >= batch_size:

@@ -11,8 +11,13 @@ class HistoricalReplaySimulator:
     MAX_TASKS_PER_STATE = 5
     MAX_RESOURCES_PER_STATE = 5
     
-    def __init__(self, process_instances: pd.DataFrame, task_instances: pd.DataFrame, 
-                 task_definitions: pd.DataFrame, process_task_relations: pd.DataFrame):
+    def __init__(self, process_instances: pd.DataFrame, task_instances: pd.DataFrame,
+                 task_definitions: pd.DataFrame, process_task_relations: pd.DataFrame,
+                 episode_process_ids: Optional[List[Any]] = None,
+                 episode_window_size: Optional[int] = None,
+                 episode_window_stride: Optional[int] = None,
+                 shuffle_episode_processes: bool = False,
+                 episode_seed: int = 42):
         """
         初始化历史重放仿真器
         
@@ -21,12 +26,22 @@ class HistoricalReplaySimulator:
             task_instances: 任务实例数据
             task_definitions: 任务定义数据
             process_task_relations: 进程任务关系数据
+            episode_process_ids: 显式指定每个episode可使用的流程ID集合/顺序
+            episode_window_size: 每个episode从显式ID中取多少个流程；None/0表示全部
+            episode_window_stride: 显式ID窗口每个episode向前滚动的步长
+            shuffle_episode_processes: 是否先用固定seed打散显式ID顺序
+            episode_seed: 显式ID打散和窗口选择的固定seed
         """
         self.logger = logging.getLogger(__name__)
         self.process_instances = process_instances
         self.task_instances = task_instances
         self.task_definitions = task_definitions
         self.process_task_relations = process_task_relations
+        self.episode_process_ids = self._normalize_process_id_list(episode_process_ids)
+        self.episode_window_size = int(episode_window_size) if episode_window_size else None
+        self.episode_window_stride = int(episode_window_stride) if episode_window_stride else None
+        self.shuffle_episode_processes = bool(shuffle_episode_processes)
+        self.episode_seed = int(episode_seed)
         
         # 状态映射
         self.state_mapping = {
@@ -46,6 +61,80 @@ class HistoricalReplaySimulator:
         
         # 初始化仿真状态
         self.reset()
+
+    @staticmethod
+    def _normalize_process_id(value: Any) -> Any:
+        """将CSV/命令行中的流程ID归一，避免 int 与 '1.0' 无法匹配。"""
+        if pd.isna(value):
+            return None
+        if isinstance(value, (np.integer, int)):
+            return int(value)
+        if isinstance(value, (np.floating, float)):
+            if np.isfinite(value) and float(value).is_integer():
+                return int(value)
+            return float(value)
+
+        text = str(value).strip()
+        if not text:
+            return None
+        try:
+            numeric = float(text)
+            if numeric.is_integer():
+                return int(numeric)
+        except ValueError:
+            pass
+        return text
+
+    @classmethod
+    def _normalize_process_id_list(cls, values: Optional[List[Any]]) -> Optional[List[Any]]:
+        if values is None:
+            return None
+
+        normalized: List[Any] = []
+        seen = set()
+        for value in values:
+            normalized_id = cls._normalize_process_id(value)
+            if normalized_id is None or normalized_id in seen:
+                continue
+            normalized.append(normalized_id)
+            seen.add(normalized_id)
+        return normalized
+
+    def _apply_explicit_episode_process_ids(self,
+                                            processes: pd.DataFrame,
+                                            episode_count: int) -> pd.DataFrame:
+        """按显式流程ID过滤并选择本episode的确定性窗口。"""
+        if not self.episode_process_ids:
+            return processes
+
+        order_ids = list(self.episode_process_ids)
+        if self.shuffle_episode_processes:
+            import random
+            rng = random.Random(self.episode_seed)
+            rng.shuffle(order_ids)
+
+        order_map = {process_id: idx for idx, process_id in enumerate(order_ids)}
+        filtered = processes.copy()
+        filtered['_normalized_process_id'] = filtered['id'].map(self._normalize_process_id)
+        filtered['_workflow_order'] = filtered['_normalized_process_id'].map(order_map)
+        filtered = filtered[filtered['_workflow_order'].notna()].copy()
+
+        if filtered.empty:
+            self.logger.warning("Explicit episode_process_ids matched no successful process instances")
+            return filtered.drop(columns=['_normalized_process_id', '_workflow_order'], errors='ignore')
+
+        filtered = filtered.sort_values('_workflow_order').reset_index(drop=True)
+        window_size = self.episode_window_size
+        if window_size and 0 < window_size < len(filtered):
+            stride = self.episode_window_stride or window_size
+            start = (episode_count * stride) % len(filtered)
+            selected_positions = [
+                (start + offset) % len(filtered)
+                for offset in range(window_size)
+            ]
+            filtered = filtered.iloc[selected_positions].reset_index(drop=True)
+
+        return filtered.drop(columns=['_normalized_process_id', '_workflow_order'], errors='ignore')
     
     def reset(self):
         """重置仿真环境"""
@@ -83,12 +172,29 @@ class HistoricalReplaySimulator:
             self.logger.warning("No successful process instances with tasks found!")
             return
         
+        explicit_episode_ids = self.episode_process_ids is not None
+        if explicit_episode_ids:
+            self.successful_processes = self._apply_explicit_episode_process_ids(
+                self.successful_processes,
+                episode_count=getattr(self, 'episode_count', 0)
+            )
+            self.logger.debug(
+                "Episode %s: Using explicit workflow ids window, processes=%d/%d",
+                getattr(self, 'episode_count', 0),
+                len(self.successful_processes),
+                len(self.episode_process_ids or [])
+            )
+
+        if len(self.successful_processes) == 0:
+            self.logger.warning("No successful process instances selected for this episode!")
+            return
+
         # 修复：增加处理的进程数量，允许处理更多数据
         # 可以通过环境变量或配置来调整
         from config.config import Config
         max_processes_per_episode = Config.MAX_PROCESSES_PER_EPISODE
         
-        if len(self.successful_processes) > max_processes_per_episode:
+        if not explicit_episode_ids and len(self.successful_processes) > max_processes_per_episode:
             # 训练模式：随机采样，确保数据多样性
             import random
             # 修复：使用episode计数器确保每次采样不同的数据
@@ -96,14 +202,14 @@ class HistoricalReplaySimulator:
             random.seed(Config.RANDOM_SEED + episode_count)  # 每次使用不同的随机种子
             sampled_indices = random.sample(range(len(self.successful_processes)), max_processes_per_episode)
             self.successful_processes = self.successful_processes.iloc[sampled_indices].reset_index(drop=True)
-            self.logger.info(f"Episode {episode_count}: Sampled {max_processes_per_episode} processes from {len(self.process_instances)} total processes")
+            self.logger.debug(f"Episode {episode_count}: Sampled {max_processes_per_episode} processes from {len(self.process_instances)} total processes")
         
-        self.logger.info(f"Processing {len(self.successful_processes)} successful processes with tasks")
+        self.logger.debug(f"Processing {len(self.successful_processes)} successful processes with tasks")
         total_tasks = len(self.task_instances[self.task_instances['process_instance_id'].isin(self.successful_processes['id'])])
-        self.logger.info(f"Total tasks to process: {total_tasks}")
+        self.logger.debug(f"Total tasks to process: {total_tasks}")
         
         # 如果任务数量过多，进行智能采样
-        if total_tasks > Config.MAX_TASKS_PER_EPISODE:
+        if not explicit_episode_ids and total_tasks > Config.MAX_TASKS_PER_EPISODE:
             self.logger.info(f"Task count {total_tasks} exceeds limit {Config.MAX_TASKS_PER_EPISODE}, performing intelligent sampling...")
             
             # 智能采样策略：优先选择任务数量适中的进程
@@ -180,7 +286,7 @@ class HistoricalReplaySimulator:
                 'post_task_code': relation['post_task_code']
             })
         
-        self.logger.info(f"Process {process_definition_code} has {len(dependency_list)} dependencies")
+        self.logger.debug(f"Process {process_definition_code} has {len(dependency_list)} dependencies")
         return dependency_list
         for dep in filtered_dependencies:
             self.logger.info(f"  Dependency: {dep['pre_task']} -> {dep['post_task']}")
@@ -1167,7 +1273,7 @@ class HistoricalReplaySimulator:
         """根据依赖关系对任务进行拓扑排序"""
         # 使用已经获取的依赖关系
         if not hasattr(self, 'current_process_dependencies') or not self.current_process_dependencies:
-            self.logger.warning(f"No dependencies found for process {process_definition_code}, returning original order")
+            self.logger.debug(f"No dependencies found for process {process_definition_code}, returning original order")
             return self.current_process_tasks
         
         # 构建依赖图
@@ -1213,7 +1319,7 @@ class HistoricalReplaySimulator:
                 sorted_df = sorted_df.sort_values('dependency_order').reset_index(drop=True)
                 sorted_df = sorted_df.drop('dependency_order', axis=1)
                 
-                self.logger.info(f"Tasks sorted by dependencies for process {process_definition_code}")
+                self.logger.debug(f"Tasks sorted by dependencies for process {process_definition_code}")
                 return sorted_df
                 
         except Exception as e:

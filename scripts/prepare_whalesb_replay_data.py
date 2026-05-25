@@ -220,23 +220,224 @@ def filter_to_successful_scope(tables: Dict[str, pd.DataFrame]) -> Dict[str, pd.
     }
 
 
-def build_process_stats(process_df: pd.DataFrame, task_df: pd.DataFrame) -> pd.DataFrame:
+def _rank_bins(series: pd.Series, labels: List[str]) -> pd.Series:
+    """按秩分位数分箱，避免重复值导致 qcut 失败。"""
+    if series.empty:
+        return pd.Series(dtype=object)
+
+    numeric = pd.to_numeric(series, errors="coerce").fillna(0.0)
+    if numeric.nunique(dropna=False) <= 1:
+        return pd.Series([labels[0]] * len(numeric), index=series.index, dtype=object)
+
+    pct = numeric.rank(method="first", pct=True)
+    bins = np.linspace(0.0, 1.0, num=len(labels) + 1)
+    bins[0] = -0.001
+    return pd.cut(pct, bins=bins, labels=labels, include_lowest=True).astype(str)
+
+
+def _merge_sparse_strata(stats: pd.DataFrame,
+                         primary_col: str,
+                         fallback_cols: List[str],
+                         min_count: int = 5) -> pd.Series:
+    """保留主分层，稀疏桶自动合并到更粗粒度分层。"""
+    labels = ("full|" + stats[primary_col].astype(str)).astype(object)
+
+    for col in fallback_cols:
+        if col not in stats.columns:
+            continue
+
+        counts = labels.value_counts(dropna=False)
+        sparse_labels = set(counts[counts < min_count].index.tolist())
+        if not sparse_labels:
+            break
+
+        sparse_values = set(stats.loc[labels.isin(sparse_labels), col].astype(str).tolist())
+        if not sparse_values:
+            continue
+
+        merge_mask = stats[col].astype(str).isin(sparse_values)
+        labels.loc[merge_mask] = col + "|" + stats.loc[merge_mask, col].astype(str)
+
+    counts = labels.value_counts(dropna=False)
+    sparse_labels = set(counts[counts < min_count].index.tolist())
+    if sparse_labels:
+        sparse_sizes = set(stats.loc[labels.isin(sparse_labels), "workflow_size"].astype(str).tolist())
+        merge_mask = stats["workflow_size"].astype(str).isin(sparse_sizes)
+        labels.loc[merge_mask] = "workflow_size|" + stats.loc[merge_mask, "workflow_size"].astype(str)
+
+    counts = labels.value_counts(dropna=False)
+    sparse_labels = set(counts[counts < min_count].index.tolist())
+    if sparse_labels:
+        labels.loc[labels.isin(sparse_labels)] = "all|merged_sparse"
+
+    return labels
+
+
+def _build_definition_dag_stats(rel_df: Optional[pd.DataFrame]) -> pd.DataFrame:
+    if rel_df is None or rel_df.empty:
+        return pd.DataFrame(columns=[
+            "process_definition_code",
+            "dag_node_count",
+            "dag_edge_count",
+            "dag_depth",
+            "dag_width",
+        ])
+
+    rows = []
+    for process_code, group in rel_df.groupby("process_definition_code"):
+        graph = nx.DiGraph()
+        for _, row in group.iterrows():
+            pre = row.get("pre_task_code")
+            post = row.get("post_task_code")
+            if pd.notna(pre) and pd.notna(post):
+                graph.add_edge(pre, post)
+
+        node_count = int(graph.number_of_nodes())
+        edge_count = int(graph.number_of_edges())
+        if node_count == 0:
+            depth = 0
+            width = 0
+        elif nx.is_directed_acyclic_graph(graph):
+            depth = int(nx.dag_longest_path_length(graph) + 1)
+            try:
+                width = max(len(level) for level in nx.topological_generations(graph))
+            except Exception:
+                width = 1
+        else:
+            LOGGER.warning("Cycle detected in process_definition_code=%s; using fallback DAG stats", process_code)
+            depth = 0
+            width = node_count
+
+        rows.append({
+            "process_definition_code": process_code,
+            "dag_node_count": node_count,
+            "dag_edge_count": edge_count,
+            "dag_depth": depth,
+            "dag_width": width,
+        })
+
+    return pd.DataFrame(rows)
+
+
+def build_process_stats(process_df: pd.DataFrame,
+                        task_df: pd.DataFrame,
+                        rel_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     task_counts = (
         task_df.groupby("process_instance_id").size().rename("task_count").reset_index()
     )
     stats = process_df.merge(task_counts, left_on="id", right_on="process_instance_id", how="inner")
     stats = stats.rename(columns={"id": "process_id", "name": "process_name"})
-    stats = stats[["process_id", "task_count", "process_name", "start_time", "end_time"]].copy()
+    if "process_definition_code" not in stats.columns:
+        stats["process_definition_code"] = np.nan
+
+    stats = stats[[
+        "process_id",
+        "process_definition_code",
+        "task_count",
+        "process_name",
+        "start_time",
+        "end_time",
+    ]].copy()
+    start_time = pd.to_datetime(stats["start_time"], errors="coerce")
+    end_time = pd.to_datetime(stats["end_time"], errors="coerce")
+    stats["duration_seconds"] = (
+        end_time - start_time
+    ).dt.total_seconds().clip(lower=0).fillna(0.0)
+
+    dag_stats = _build_definition_dag_stats(rel_df)
+    if not dag_stats.empty:
+        stats = stats.merge(dag_stats, on="process_definition_code", how="left")
+    for column in ["dag_node_count", "dag_edge_count", "dag_depth", "dag_width"]:
+        if column not in stats.columns:
+            stats[column] = 0
+        stats[column] = pd.to_numeric(stats[column], errors="coerce").fillna(0.0)
+
+    max_possible_edges = (stats["task_count"] * (stats["task_count"] - 1) / 2).replace(0, np.nan)
+    stats["dag_density"] = (
+        stats["dag_edge_count"] / max_possible_edges
+    ).replace([np.inf, -np.inf], 0.0).fillna(0.0).clip(lower=0.0, upper=1.0)
+    stats["parallelism_ratio"] = (
+        stats["task_count"] / stats["dag_depth"].replace(0, np.nan)
+    ).replace([np.inf, -np.inf], 0.0).fillna(0.0)
+    stats["dag_complexity_score"] = (
+        np.log1p(stats["task_count"]) +
+        0.7 * np.log1p(stats["dag_edge_count"]) +
+        0.3 * stats["dag_depth"] +
+        2.0 * stats["dag_density"]
+    )
+
     stats["workflow_size"] = pd.cut(
         stats["task_count"],
         bins=[0, 10, 30, float("inf")],
         labels=["small", "medium", "large"],
     )
+    stats["duration_bin"] = _rank_bins(stats["duration_seconds"], ["short", "medium", "long"])
+    stats["dag_complexity_bin"] = _rank_bins(stats["dag_complexity_score"], ["simple", "moderate", "complex"])
+    stats["workflow_stratum"] = (
+        stats["workflow_size"].astype(str) +
+        "|" + stats["duration_bin"].astype(str) +
+        "|" + stats["dag_complexity_bin"].astype(str)
+    )
+    stats["size_duration_stratum"] = (
+        stats["workflow_size"].astype(str) +
+        "|" + stats["duration_bin"].astype(str)
+    )
+    stats["size_complexity_stratum"] = (
+        stats["workflow_size"].astype(str) +
+        "|" + stats["dag_complexity_bin"].astype(str)
+    )
+    stats["duration_complexity_stratum"] = (
+        stats["duration_bin"].astype(str) +
+        "|" + stats["dag_complexity_bin"].astype(str)
+    )
+    stats["balanced_workflow_stratum"] = _merge_sparse_strata(
+        stats,
+        primary_col="workflow_stratum",
+        fallback_cols=[
+            "size_duration_stratum",
+            "size_complexity_stratum",
+            "duration_complexity_stratum",
+            "workflow_size",
+        ],
+        min_count=5,
+    )
     return stats
 
 
 def make_splits(process_stats: pd.DataFrame, seed: int) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    stratify_col = process_stats["workflow_size"]
+    stratify_name = None
+    stratify_col = None
+    for candidate in [
+        "balanced_workflow_stratum",
+        "workflow_stratum",
+        "size_duration_stratum",
+        "size_complexity_stratum",
+        "workflow_size",
+    ]:
+        value_counts = process_stats[candidate].value_counts(dropna=False)
+        can_stratify = bool((value_counts >= 5).all()) and len(value_counts) > 1
+        if can_stratify:
+            stratify_name = candidate
+            stratify_col = process_stats[candidate]
+            break
+
+    if stratify_col is None:
+        LOGGER.warning("Workflow strata are imbalanced; using non-stratified split")
+        train_df, temp_df = train_test_split(
+            process_stats,
+            test_size=0.4,
+            random_state=seed,
+            shuffle=True,
+        )
+        val_df, test_df = train_test_split(
+            temp_df,
+            test_size=0.5,
+            random_state=seed,
+            shuffle=True,
+        )
+        return train_df.reset_index(drop=True), val_df.reset_index(drop=True), test_df.reset_index(drop=True)
+
+    LOGGER.info("Using stratified replay split column: %s", stratify_name)
     value_counts = stratify_col.value_counts(dropna=False)
     can_stratify = bool((value_counts >= 2).all()) and len(value_counts) > 1
 
@@ -247,14 +448,22 @@ def make_splits(process_stats: pd.DataFrame, seed: int) -> Tuple[pd.DataFrame, p
             random_state=seed,
             stratify=stratify_col,
         )
+        temp_counts = temp_df[stratify_name].value_counts(dropna=False)
+        temp_stratify = (
+            temp_df[stratify_name]
+            if bool((temp_counts >= 2).all()) and len(temp_counts) > 1
+            else None
+        )
+        if temp_stratify is None:
+            LOGGER.warning("Temp split strata are sparse; val/test split is non-stratified")
         val_df, test_df = train_test_split(
             temp_df,
             test_size=0.5,
             random_state=seed,
-            stratify=temp_df["workflow_size"],
+            stratify=temp_stratify,
         )
     else:
-        LOGGER.warning("Workflow-size classes are imbalanced; using non-stratified split")
+        LOGGER.warning("Workflow strata are imbalanced after fallback; using non-stratified split")
         train_df, temp_df = train_test_split(
             process_stats,
             test_size=0.4,
@@ -336,6 +545,7 @@ def dependency_integrity_report(
 
 
 def dataset_info(process_stats: pd.DataFrame, train_df: pd.DataFrame, val_df: pd.DataFrame, test_df: pd.DataFrame) -> Dict[str, object]:
+    stratum_col = "balanced_workflow_stratum" if "balanced_workflow_stratum" in process_stats.columns else "workflow_size"
     return {
         "total_processes": int(len(process_stats)),
         "train_size": int(len(train_df)),
@@ -345,6 +555,18 @@ def dataset_info(process_stats: pd.DataFrame, train_df: pd.DataFrame, val_df: pd
         "train_workflow_distribution": train_df["workflow_size"].value_counts().to_dict(),
         "val_workflow_distribution": val_df["workflow_size"].value_counts().to_dict(),
         "test_workflow_distribution": test_df["workflow_size"].value_counts().to_dict(),
+        "duration_bin_distribution": process_stats.get("duration_bin", pd.Series(dtype=object)).value_counts().to_dict(),
+        "dag_complexity_distribution": process_stats.get("dag_complexity_bin", pd.Series(dtype=object)).value_counts().to_dict(),
+        "train_duration_distribution": train_df.get("duration_bin", pd.Series(dtype=object)).value_counts().to_dict(),
+        "val_duration_distribution": val_df.get("duration_bin", pd.Series(dtype=object)).value_counts().to_dict(),
+        "test_duration_distribution": test_df.get("duration_bin", pd.Series(dtype=object)).value_counts().to_dict(),
+        "train_dag_complexity_distribution": train_df.get("dag_complexity_bin", pd.Series(dtype=object)).value_counts().to_dict(),
+        "val_dag_complexity_distribution": val_df.get("dag_complexity_bin", pd.Series(dtype=object)).value_counts().to_dict(),
+        "test_dag_complexity_distribution": test_df.get("dag_complexity_bin", pd.Series(dtype=object)).value_counts().to_dict(),
+        "stratum_distribution": process_stats[stratum_col].value_counts().to_dict(),
+        "train_stratum_distribution": train_df[stratum_col].value_counts().to_dict(),
+        "val_stratum_distribution": val_df[stratum_col].value_counts().to_dict(),
+        "test_stratum_distribution": test_df[stratum_col].value_counts().to_dict(),
     }
 
 
@@ -409,7 +631,11 @@ def main() -> None:
     normalize_columns(tables)
     scoped = filter_to_successful_scope(tables)
 
-    process_stats = build_process_stats(scoped["process_instance"], scoped["task_instance"])
+    process_stats = build_process_stats(
+        scoped["process_instance"],
+        scoped["task_instance"],
+        scoped["process_task_relation"],
+    )
     train_df, val_df, test_df = make_splits(process_stats, args.seed)
 
     validation = dependency_integrity_report(

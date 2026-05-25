@@ -44,6 +44,10 @@ class GAConfig:
     
     # 短期训练的步数 (用于评估)
     eval_episodes: int = 20
+
+    # 并发评估个体数。真实 replay 数据环境很大，默认串行能避免
+    # 多个 PyTorch/环境副本同时占用内存导致进程被系统杀掉。
+    max_workers: int = 1
     
     seed: int = 42
 
@@ -160,7 +164,7 @@ class GAArchitectureOptimizer:
             
             # 更新最优个体
             current_best = min(self.population, key=lambda x: x.fitness)
-            if current_best.fitness < best_fitness:
+            if self.best_individual is None or current_best.fitness < best_fitness:
                 best_fitness = current_best.fitness
                 self.best_individual = copy.deepcopy(current_best)
                 no_improve_count = 0
@@ -206,22 +210,48 @@ class GAArchitectureOptimizer:
     def _evaluate_population(self,
                               fitness_fn: Callable[[Dict], Dict[str, float]]):
         """评估整个种群的适应度"""
-        for ind in self.population:
-            if ind.fitness < float('inf') - 1:
-                continue  # 跳过已评估的精英
+        unassessed_inds = [ind for ind in self.population if not np.isfinite(ind.fitness)]
+        if not unassessed_inds:
+            return
+
+        max_workers = max(1, min(len(unassessed_inds), int(self.config.max_workers)))
+
+        if max_workers == 1:
+            for ind in unassessed_inds:
+                t0 = time.time()
+                try:
+                    result = fitness_fn(ind.to_network_structure())
+                    ind.objectives = result
+                    ind.fitness = self._aggregate_fitness(result)
+                    ind.eval_time = time.time() - t0
+                except Exception as e:
+                    self.logger.warning(f"Evaluation failed for {ind.genome}: {e}")
+                    ind.fitness = float('inf')
+                    ind.eval_time = time.time() - t0
+            return
+
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_ind = {
+                executor.submit(fitness_fn, ind.to_network_structure()): ind
+                for ind in unassessed_inds
+            }
             
-            t0 = time.time()
-            try:
-                result = fitness_fn(ind.to_network_structure())
-                ind.objectives = result
-                # 主适应度: 综合指标 (越小越好)
-                ind.fitness = self._aggregate_fitness(result)
-                ind.eval_time = time.time() - t0
-            except Exception as e:
-                self.logger.warning(
-                    f"Evaluation failed for {ind.genome}: {e}")
-                ind.fitness = float('inf')
-                ind.eval_time = time.time() - t0
+            for future in as_completed(future_to_ind):
+                ind = future_to_ind[future]
+                # 注意: 时间测量不完全等同于总墙上时间，但能反映相对耗时
+                t0 = time.time()
+                try:
+                    result = future.result()
+                    ind.objectives = result
+                    # 主适应度: 综合指标 (越小越好)
+                    ind.fitness = self._aggregate_fitness(result)
+                    ind.eval_time = time.time() - t0
+                except Exception as e:
+                    self.logger.warning(f"Evaluation failed for {ind.genome}: {e}")
+                    ind.fitness = float('inf')
+                    ind.eval_time = time.time() - t0
     
     @staticmethod
     def _aggregate_fitness(objectives: Dict[str, float]) -> float:

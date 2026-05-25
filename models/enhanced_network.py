@@ -301,6 +301,12 @@ class EnhancedFeatureFusion(nn.Module):
         self.resource_dim = resource_dim
         self.fusion_dim = fusion_dim
         
+        # DAG维度对齐投射
+        if task_dim != fusion_dim:
+            self.dag_proj = nn.Linear(task_dim, fusion_dim)
+        else:
+            self.dag_proj = nn.Identity()
+        
         # 特征投影
         self.task_projection = nn.Linear(task_dim, fusion_dim)
         self.resource_projection = nn.Linear(resource_dim, fusion_dim)
@@ -367,10 +373,10 @@ class EnhancedFeatureFusion(nn.Module):
         
         # 全局编码
         fused = self.global_encoder(global_features)
-        
+            
         # 如果有DAG表示，融合进来
         if dag_representation is not None:
-            fused = fused + dag_representation
+            fused = fused + self.dag_proj(dag_representation)
         
         # Dueling DQN: Q = V + (A - mean(A))
         value = self.value_stream(fused)
